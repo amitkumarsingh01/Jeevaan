@@ -131,7 +131,7 @@ class MedicineService {
           await _dbHelper.insertOrderItem(orderItem);
 
           // Update stock
-          final newStock = medicine.stockQuantity - item['quantity'];
+          final newStock = medicine.stockQuantity - (item['quantity'] as int);
           await _dbHelper.updateMedicineStock(medicine.id!, newStock);
         }
       }
@@ -151,6 +151,8 @@ class MedicineService {
       for (final order in orders) {
         final items = await _dbHelper.getOrderItemsByOrderId(order.id!);
         // Note: We can't modify the order object directly, so we'll handle this in the UI
+        // Items are loaded but not used here as Order model doesn't have items field
+        print('Loaded ${items.length} items for order ${order.orderNumber}');
       }
       
       return orders;
