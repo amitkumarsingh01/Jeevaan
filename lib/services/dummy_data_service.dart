@@ -1,5 +1,7 @@
 import '../models/doctor.dart';
 import '../models/medicine.dart';
+import '../models/order.dart';
+import '../models/user.dart';
 import '../database/database_helper.dart';
 
 class DummyDataService {
@@ -525,6 +527,194 @@ class DummyDataService {
       print('Added ${dummyMedicines.length} dummy medicines to database');
     } catch (e) {
       print('Error adding dummy medicines: $e');
+    }
+  }
+
+  static Future<void> addDummyUsers() async {
+    try {
+      // Check if users already exist
+      final existingUsers = await _dbHelper.getAllUsers();
+      if (existingUsers.isNotEmpty) {
+        return; // Don't add if users already exist
+      }
+
+      final sampleUsers = [
+        User(
+          name: 'John Doe',
+          email: 'john.doe@example.com',
+          password: 'password123',
+          createdAt: DateTime.now().subtract(const Duration(days: 30)),
+        ),
+        User(
+          name: 'Jane Smith',
+          email: 'jane.smith@example.com',
+          password: 'password123',
+          createdAt: DateTime.now().subtract(const Duration(days: 25)),
+        ),
+        User(
+          name: 'Mike Johnson',
+          email: 'mike.johnson@example.com',
+          password: 'password123',
+          createdAt: DateTime.now().subtract(const Duration(days: 20)),
+        ),
+        User(
+          name: 'Sarah Wilson',
+          email: 'sarah.wilson@example.com',
+          password: 'password123',
+          createdAt: DateTime.now().subtract(const Duration(days: 15)),
+        ),
+        User(
+          name: 'David Brown',
+          email: 'david.brown@example.com',
+          password: 'password123',
+          createdAt: DateTime.now().subtract(const Duration(days: 10)),
+        ),
+        User(
+          name: 'Amit Kumar',
+          email: 'amit@gmail.com',
+          password: 'password123',
+          createdAt: DateTime.now().subtract(const Duration(days: 5)),
+        ),
+      ];
+
+      // Insert all sample users
+      for (final user in sampleUsers) {
+        await _dbHelper.insertUser(user);
+      }
+
+      print('Added ${sampleUsers.length} sample users to database');
+    } catch (e) {
+      print('Error adding sample users: $e');
+    }
+  }
+
+  static Future<void> addDummyOrders() async {
+    try {
+      // Check if orders already exist
+      final existingOrders = await _dbHelper.getAllOrders();
+      if (existingOrders.isNotEmpty) {
+        return; // Don't add if orders already exist
+      }
+
+      // Get some medicines to create orders
+      final medicines = await _dbHelper.getAllMedicines();
+      if (medicines.isEmpty) {
+        print('No medicines available to create orders');
+        return;
+      }
+
+      final sampleOrders = [
+        Order(
+          orderNumber: 'ORD001',
+          customerName: 'John Doe',
+          customerPhone: '+1-555-0101',
+          customerEmail: 'john.doe@example.com',
+          deliveryAddress: '123 Main Street, City, State 12345',
+          subtotal: 150.0,
+          tax: 18.0,
+          deliveryFee: 50.0,
+          totalAmount: 218.0,
+          status: OrderStatus.delivered,
+          paymentStatus: PaymentStatus.paid,
+          paymentMethod: 'Credit Card',
+          notes: 'Please deliver after 6 PM',
+          orderDate: DateTime.now().subtract(const Duration(days: 5)),
+          deliveryDate: DateTime.now().subtract(const Duration(days: 3)),
+          trackingNumber: 'TRK123456789',
+        ),
+        Order(
+          orderNumber: 'ORD002',
+          customerName: 'Jane Smith',
+          customerPhone: '+1-555-0102',
+          customerEmail: 'jane.smith@example.com',
+          deliveryAddress: '456 Oak Avenue, City, State 12345',
+          subtotal: 75.0,
+          tax: 9.0,
+          deliveryFee: 50.0,
+          totalAmount: 134.0,
+          status: OrderStatus.shipped,
+          paymentStatus: PaymentStatus.paid,
+          paymentMethod: 'UPI',
+          notes: 'Leave at front door if no one answers',
+          orderDate: DateTime.now().subtract(const Duration(days: 2)),
+          trackingNumber: 'TRK987654321',
+        ),
+        Order(
+          orderNumber: 'ORD003',
+          customerName: 'Mike Johnson',
+          customerPhone: '+1-555-0103',
+          customerEmail: 'mike.johnson@example.com',
+          deliveryAddress: '789 Pine Road, City, State 12345',
+          subtotal: 200.0,
+          tax: 24.0,
+          deliveryFee: 50.0,
+          totalAmount: 274.0,
+          status: OrderStatus.processing,
+          paymentStatus: PaymentStatus.paid,
+          paymentMethod: 'Debit Card',
+          notes: 'Urgent delivery needed',
+          orderDate: DateTime.now().subtract(const Duration(hours: 6)),
+        ),
+        Order(
+          orderNumber: 'ORD004',
+          customerName: 'Sarah Wilson',
+          customerPhone: '+1-555-0104',
+          customerEmail: 'sarah.wilson@example.com',
+          deliveryAddress: '321 Elm Street, City, State 12345',
+          subtotal: 120.0,
+          tax: 14.4,
+          deliveryFee: 50.0,
+          totalAmount: 184.4,
+          status: OrderStatus.pending,
+          paymentStatus: PaymentStatus.pending,
+          paymentMethod: 'Cash on Delivery',
+          notes: 'Call before delivery',
+          orderDate: DateTime.now().subtract(const Duration(hours: 2)),
+        ),
+        Order(
+          orderNumber: 'ORD005',
+          customerName: 'David Brown',
+          customerPhone: '+1-555-0105',
+          customerEmail: 'david.brown@example.com',
+          deliveryAddress: '654 Maple Lane, City, State 12345',
+          subtotal: 90.0,
+          tax: 10.8,
+          deliveryFee: 50.0,
+          totalAmount: 150.8,
+          status: OrderStatus.cancelled,
+          paymentStatus: PaymentStatus.refunded,
+          paymentMethod: 'Credit Card',
+          notes: 'Customer cancelled order',
+          orderDate: DateTime.now().subtract(const Duration(days: 1)),
+        ),
+      ];
+
+      // Insert all sample orders
+      for (final order in sampleOrders) {
+        final orderId = await _dbHelper.insertOrder(order);
+        
+        // Add some order items for each order
+        final selectedMedicines = medicines.take(2).toList();
+        for (int i = 0; i < selectedMedicines.length; i++) {
+          final medicine = selectedMedicines[i];
+          final quantity = (i + 1) * 2; // 2, 4, etc.
+          
+          final orderItem = OrderItem(
+            orderId: orderId,
+            medicineId: medicine.id!,
+            medicineName: medicine.name,
+            unitPrice: medicine.price,
+            quantity: quantity,
+            totalPrice: medicine.price * quantity,
+          );
+          
+          await _dbHelper.insertOrderItem(orderItem);
+        }
+      }
+
+      print('Added ${sampleOrders.length} sample orders to database');
+    } catch (e) {
+      print('Error adding sample orders: $e');
     }
   }
 
