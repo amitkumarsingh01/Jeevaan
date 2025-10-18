@@ -12,7 +12,8 @@ import 'screens/notifications_page.dart';
 import 'screens/database_test_page.dart';
 import 'screens/settings_page.dart';
 import 'screens/login_page.dart';
-import 'screens/medicine_catalog_page.dart';
+import 'screens/emergency_contact_page.dart';
+import 'services/auth_service.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
