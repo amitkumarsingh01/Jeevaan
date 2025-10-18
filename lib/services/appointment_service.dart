@@ -1,8 +1,8 @@
 import '../models/appointment.dart';
-import '../models/doctor.dart';
 import '../database/database_helper.dart';
 import 'medication_reminder_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 class AppointmentService {
   static final DatabaseHelper _dbHelper = DatabaseHelper();
@@ -57,13 +57,14 @@ class AppointmentService {
         );
 
         final FlutterLocalNotificationsPlugin notifications = FlutterLocalNotificationsPlugin();
-        await notifications.schedule(
+        await notifications.zonedSchedule(
           appointment.id!,
           'Appointment Reminder',
           'You have an appointment with Dr. ${await _getDoctorName(appointment.doctorId)} tomorrow at ${appointment.appointmentTime}',
-          reminderTime,
+          tz.TZDateTime.from(reminderTime, tz.getLocation('Asia/Kolkata')),
           notificationDetails,
           payload: 'appointment_${appointment.id}',
+          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
         );
       }
     } catch (e) {
