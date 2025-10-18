@@ -65,6 +65,7 @@ class AppointmentService {
           notificationDetails,
           payload: 'appointment_${appointment.id}',
           uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         );
       }
     } catch (e) {
