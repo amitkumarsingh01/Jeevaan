@@ -65,7 +65,6 @@ class MedicationReminderService {
     int dayOfWeek,
     int reminderTimeMinutes,
   ) async {
-    final now = DateTime.now();
     final hour = reminderTimeMinutes ~/ 60;
     final minute = reminderTimeMinutes % 60;
 
@@ -99,6 +98,7 @@ class MedicationReminderService {
       uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
       payload: 'medication_${medication.id}',
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
     );
   }
 
