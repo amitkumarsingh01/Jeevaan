@@ -25,8 +25,9 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'jeevaan.db');
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -168,6 +169,68 @@ class DatabaseHelper {
         FOREIGN KEY (medicine_id) REFERENCES medicines (id)
       )
     ''');
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Add medicines and orders tables
+      await db.execute('''
+        CREATE TABLE medicines(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          generic_name TEXT NOT NULL,
+          manufacturer TEXT NOT NULL,
+          category TEXT NOT NULL,
+          description TEXT NOT NULL,
+          price REAL NOT NULL,
+          stock_quantity INTEGER NOT NULL,
+          dosage_form TEXT NOT NULL,
+          strength TEXT NOT NULL,
+          image_url TEXT,
+          requires_prescription INTEGER NOT NULL DEFAULT 0,
+          side_effects TEXT,
+          instructions TEXT,
+          created_at INTEGER NOT NULL,
+          is_active INTEGER NOT NULL DEFAULT 1
+        )
+      ''');
+      
+      await db.execute('''
+        CREATE TABLE orders(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          order_number TEXT NOT NULL UNIQUE,
+          customer_name TEXT NOT NULL,
+          customer_phone TEXT NOT NULL,
+          customer_email TEXT NOT NULL,
+          delivery_address TEXT NOT NULL,
+          subtotal REAL NOT NULL,
+          tax REAL NOT NULL,
+          delivery_fee REAL NOT NULL,
+          total_amount REAL NOT NULL,
+          status TEXT NOT NULL DEFAULT 'pending',
+          payment_status TEXT NOT NULL DEFAULT 'pending',
+          payment_method TEXT,
+          notes TEXT,
+          order_date INTEGER NOT NULL,
+          delivery_date INTEGER,
+          tracking_number TEXT
+        )
+      ''');
+      
+      await db.execute('''
+        CREATE TABLE order_items(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          order_id INTEGER NOT NULL,
+          medicine_id INTEGER NOT NULL,
+          medicine_name TEXT NOT NULL,
+          unit_price REAL NOT NULL,
+          quantity INTEGER NOT NULL,
+          total_price REAL NOT NULL,
+          FOREIGN KEY (order_id) REFERENCES orders (id),
+          FOREIGN KEY (medicine_id) REFERENCES medicines (id)
+        )
+      ''');
+    }
   }
 
   // Insert a new user
@@ -934,7 +997,6 @@ class DatabaseHelper {
 
   // Get order statistics
   Future<Map<String, int>> getOrderStats() async {
-    final db = await database;
     final orders = await getAllOrders();
     
     return {
@@ -952,5 +1014,19 @@ class DatabaseHelper {
   Future<void> close() async {
     final db = await database;
     await db.close();
+  }
+
+  // Reset database (for development/testing)
+  Future<void> resetDatabase() async {
+    final db = await database;
+    await db.close();
+    _database = null;
+    
+    // Delete the database file
+    String path = join(await getDatabasesPath(), 'jeevaan.db');
+    await deleteDatabase(path);
+    
+    // Recreate database
+    _database = await _initDatabase();
   }
 }
