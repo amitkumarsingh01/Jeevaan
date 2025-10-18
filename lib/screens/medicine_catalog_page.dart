@@ -106,7 +106,7 @@ class _MedicineCatalogPageState extends State<MedicineCatalogPage> {
   }
 
   int _getCartItemCount() {
-    return _cart.fold(0, (sum, item) => sum + item['quantity']);
+    return _cart.fold(0, (sum, item) => sum + (item['quantity'] as int));
   }
 
   @override
@@ -366,7 +366,7 @@ class _MedicineCatalogPageState extends State<MedicineCatalogPage> {
                                     const SizedBox(height: 8),
                                     Row(
                                       children: [
-                                        Icon(Icons.prescription, size: 16, color: Colors.orange[600]),
+                                        Icon(Icons.medical_services, size: 16, color: Colors.orange[600]),
                                         const SizedBox(width: 4),
                                         Text(
                                           'Prescription Required',
