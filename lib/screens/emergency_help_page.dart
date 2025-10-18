@@ -1,0 +1,380 @@
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../models/emergency_contact.dart';
+import '../database/database_helper.dart';
+import '../services/location_service.dart';
+import '../services/sms_service.dart';
+import 'emergency_contact_page.dart';
+
+class EmergencyHelpPage extends StatefulWidget {
+  const EmergencyHelpPage({super.key});
+
+  @override
+  State<EmergencyHelpPage> createState() => _EmergencyHelpPageState();
+}
+
+class _EmergencyHelpPageState extends State<EmergencyHelpPage> {
+  final DatabaseHelper _dbHelper = DatabaseHelper();
+  EmergencyContact? _primaryContact;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPrimaryContact();
+  }
+
+  Future<void> _loadPrimaryContact() async {
+    final contact = await _dbHelper.getPrimaryEmergencyContact();
+    setState(() {
+      _primaryContact = contact;
+    });
+  }
+
+  Future<void> _makeEmergencyCall() async {
+    if (_primaryContact == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No emergency contact set. Please add one first.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 20),
+            Text('Opening emergency alert...'),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      // Get current location first
+      final position = await LocationService.getCurrentLocation();
+      String locationMessage = '';
+      
+      if (position != null) {
+        locationMessage = LocationService.formatLocationForSms(position);
+      } else {
+        locationMessage = '''🚨 EMERGENCY ALERT 🚨
+
+I need help! Please call me immediately.
+
+Sent from Jeevaan Emergency App''';
+      }
+      
+      // Open SMS with location and make call
+      bool smsOpened = await SmsService.sendLocationSms(_primaryContact!.phoneNumber, locationMessage);
+      
+      // Also try to make a phone call
+      final Uri phoneUri = Uri(scheme: 'tel', path: _primaryContact!.phoneNumber);
+      bool callOpened = false;
+      if (await canLaunchUrl(phoneUri)) {
+        await launchUrl(phoneUri);
+        callOpened = true;
+      }
+      
+      // Hide loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+        
+        if (smsOpened && callOpened) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Emergency SMS opened and call initiated!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else if (smsOpened) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Emergency SMS opened!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else if (callOpened) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Emergency call initiated!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Unable to open SMS or make call'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // Hide loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error opening emergency alert'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Emergency Help'),
+        backgroundColor: Colors.red[600],
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const EmergencyContactPage(),
+                ),
+              ).then((_) => _loadPrimaryContact());
+            },
+            icon: const Icon(Icons.contacts),
+          ),
+        ],
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.red[50]!,
+              Colors.red[100]!,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Emergency Icon
+                Container(
+                  width: 200,
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: Colors.red[600],
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.red.withValues(alpha: 0.3),
+                        blurRadius: 20,
+                        spreadRadius: 5,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.emergency,
+                    size: 100,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 40),
+                
+                // Emergency Text
+                Text(
+                  'EMERGENCY',
+                  style: TextStyle(
+                    fontSize: 36,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red[800],
+                    letterSpacing: 2,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                
+                Text(
+                  'Tap the button below to open SMS with your location and call your emergency contact',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.red[700],
+                  ),
+                ),
+                const SizedBox(height: 40),
+                
+                // Primary Contact Info
+                if (_primaryContact != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Emergency Contact',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red[600],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          _primaryContact!.name,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          _primaryContact!.phoneNumber,
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        Text(
+                          _primaryContact!.relationship,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                ] else ...[
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.orange[50],
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.orange[200]!),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.warning,
+                          color: Colors.orange[600],
+                          size: 48,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'No Emergency Contact Set',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange[700],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Please add an emergency contact first',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.orange[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                ],
+                
+                // Emergency Call Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 80,
+                  child: ElevatedButton(
+                    onPressed: _primaryContact != null ? _makeEmergencyCall : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primaryContact != null 
+                          ? Colors.red[600] 
+                          : Colors.grey[400],
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 8,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.location_on,
+                          size: 28,
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(
+                          Icons.phone,
+                          size: 28,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          _primaryContact != null 
+                              ? 'OPEN SMS & CALL' 
+                              : 'NO CONTACT SET',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 30),
+                
+                // Manage Contacts Button
+                TextButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const EmergencyContactPage(),
+                      ),
+                    ).then((_) => _loadPrimaryContact());
+                  },
+                  icon: const Icon(Icons.contacts),
+                  label: const Text('Manage Emergency Contacts'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.red[600],
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
