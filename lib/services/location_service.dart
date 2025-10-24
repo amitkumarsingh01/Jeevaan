@@ -20,23 +20,7 @@ class LocationService {
     return false;
   }
 
-  static Future<bool> _checkSmsPermission() async {
-    final status = await Permission.sms.status;
-    if (status.isGranted) {
-      return true;
-    }
-    
-    if (status.isDenied) {
-      final result = await Permission.sms.request();
-      return result.isGranted;
-    }
-    
-    if (status.isPermanentlyDenied) {
-      return false;
-    }
-    
-    return false;
-  }
+  // Removed SMS permission check as we only send SMS, not read
 
   static Future<Position?> getCurrentLocation() async {
     try {
@@ -64,21 +48,20 @@ class LocationService {
     }
   }
 
-  static Future<bool> canSendSms() async {
-    return await _checkSmsPermission();
-  }
+  // Removed canSendSms method as SMS permission is handled in SmsService
 
   static String formatLocationForSms(Position position) {
-    final latitude = position.latitude;
-    final longitude = position.longitude;
     final accuracy = position.accuracy;
     final timestamp = DateTime.now().toIso8601String();
+    
+    // Create Google Maps link
+    final googleMapsLink = getGoogleMapsUrl(position);
     
     return '''🚨 EMERGENCY ALERT 🚨
 
 I need help! This is my current location:
 
-📍 Location: $latitude, $longitude
+📍 Location: $googleMapsLink
 🎯 Accuracy: ${accuracy.toStringAsFixed(1)} meters
 ⏰ Time: $timestamp
 

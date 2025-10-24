@@ -59,8 +59,8 @@ class _JeevaanAIState extends State<JeevaanAI> {
         final bytes = await image.readAsBytes();
 
         final prompt = input.isNotEmpty
-            ? "You are a healthcare assistant named Jeevaan AI. You help with medical questions, health advice, medication information, and general healthcare guidance in less than 100 char. Please provide accurate, helpful, and professional medical information. Question: $input"
-            : "You are a healthcare assistant named Jeevaan AI. You help with medical questions, health advice, medication information, and general healthcare guidance in less than 100 char .";
+            ? "You are a healthcare assistant named Jeevaan AI for old age people. Question: $input in less than 100 char. Don't use bold or *"
+            : "You are a healthcare assistant named Jeevaan AI for old age people. in less than 100 char. Don't use bold or *";
 
         final content = [
           Content.text(prompt),
@@ -77,7 +77,7 @@ class _JeevaanAIState extends State<JeevaanAI> {
           return "Please enter Details";
         }
 
-        final prompt = "You are Jeevaan AI, a healthcare assistant. Please provide helpful medical information and health advice for: $input";
+        final prompt = "You are Jeevaan AI, a healthcare assistant. Please provide helpful medical information and health advice for: $input in less than 100 char. Don't use bold or *";
         final content = [Content.text(prompt)];
         final response = await model.generateContent(content);
         return response.text ?? "No response generated";

@@ -63,7 +63,7 @@ dependencies:
   # For persistent storage (remember login)
   shared_preferences: ^2.2.2
 
-  # For internationalization
+  # For internationalization and lang
   flutter_localizations:
     sdk: flutter
 
@@ -72,6 +72,8 @@ dependencies:
 
   # For password hashing
   crypto: ^3.0.3
+
+  # For Chatbot
   google_generative_ai: ^0.4.7
   image_picker: ^1.2.0
 

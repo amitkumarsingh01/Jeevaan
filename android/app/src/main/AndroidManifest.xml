@@ -1,35 +1,39 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Location permissions -->
+    <!-- Location permissions - Required for emergency location sharing -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Background location only when user explicitly enables emergency features -->
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     
-    <!-- Phone call permissions -->
+    <!-- Phone call permissions - Required for emergency calls -->
     <uses-permission android:name="android.permission.CALL_PHONE" />
-    <uses-permission android:name="android.permission.CALL_PRIVILEGED" />
+    <!-- Removed CALL_PRIVILEGED as it's not needed for emergency calls -->
     
-    <!-- SMS permissions -->
+    <!-- SMS permissions - Required for emergency SMS alerts -->
     <uses-permission android:name="android.permission.SEND_SMS" />
-    <uses-permission android:name="android.permission.READ_SMS" />
-    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <!-- Removed READ_SMS and RECEIVE_SMS as we only send, not read SMS -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     
-    <!-- Internet permission for maps -->
+    <!-- Internet permission for maps and API calls -->
     <uses-permission android:name="android.permission.INTERNET" />
     
     <!-- Google Maps permissions -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     
-    <!-- Notification permissions -->
+    <!-- Notification permissions - Required for medication reminders -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     
     <application
-        android:label="Jeevaan"
+        android:label="Jeevaan - Health Companion"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:requestLegacyExternalStorage="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"

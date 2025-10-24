@@ -1,6 +1,6 @@
 # Jeevaan - Health Companion App
 
-A comprehensive Flutter health companion app with emergency features, medication reminders, and location-based services.
+A comprehensive Flutter health companion app designed to help users manage their health and safety with emergency features, medication reminders, and location-based services. This app prioritizes user privacy and security while providing essential health management tools.
 
 ## Features
 
@@ -142,25 +142,40 @@ lib/
 - `permission_handler`: Runtime permissions
 - `flutter_launcher_icons`: App icon generation
 
-## Permissions
+## Privacy & Security
 
-The app requires the following Android permissions:
+### Data Protection
+- All user data is stored locally on the device using SQLite
+- No personal data is transmitted to external servers
+- Location data is only used for emergency features and nearby services
+- SMS functionality is limited to emergency alerts only
 
-### Location Permissions
-- `ACCESS_FINE_LOCATION`: Precise location access
-- `ACCESS_COARSE_LOCATION`: Approximate location access
-- `ACCESS_BACKGROUND_LOCATION`: Background location access
+### Permissions
 
-### Communication Permissions
-- `CALL_PHONE`: Make phone calls
-- `INTERNET`: Network access for API calls
-- `ACCESS_NETWORK_STATE`: Network state monitoring
+The app requires the following Android permissions with clear justifications:
 
-### Notification Permissions
-- `RECEIVE_BOOT_COMPLETED`: Restart notifications after reboot
-- `VIBRATE`: Notification vibration
-- `WAKE_LOCK`: Keep device awake for notifications
-- `USE_FULL_SCREEN_INTENT`: Full-screen notifications
+#### Location Permissions
+- `ACCESS_FINE_LOCATION`: Required for emergency location sharing and nearby services
+- `ACCESS_COARSE_LOCATION`: Required for approximate location services
+- `ACCESS_BACKGROUND_LOCATION`: Only used when user explicitly enables emergency features
+
+#### Communication Permissions
+- `CALL_PHONE`: Required for emergency phone calls to contacts
+- `SEND_SMS`: Required for emergency SMS alerts with location
+- `INTERNET`: Required for Google Maps integration and API calls
+- `ACCESS_NETWORK_STATE`: Required for network connectivity monitoring
+
+#### Notification Permissions
+- `RECEIVE_BOOT_COMPLETED`: Required to restart medication reminders after device reboot
+- `VIBRATE`: Required for medication reminder notifications
+- `WAKE_LOCK`: Required to ensure notifications are delivered
+- `USE_FULL_SCREEN_INTENT`: Required for critical emergency notifications
+
+### Security Features
+- Code obfuscation and minification enabled for release builds
+- No sensitive data collection or transmission
+- Local database encryption
+- Secure permission handling with user explanations
 
 ## Usage
 

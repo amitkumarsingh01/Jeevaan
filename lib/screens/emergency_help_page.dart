@@ -50,32 +50,32 @@ class _EmergencyHelpPageState extends State<EmergencyHelpPage> {
           children: [
             CircularProgressIndicator(),
             SizedBox(width: 20),
-            Text('Opening emergency alert...'),
+            Text('Initiating emergency call...'),
           ],
         ),
       ),
     );
 
     try {
-      // Send SMS directly and make call automatically
-      bool smsSent = await SmsService.sendEmergencyCallAndSms(_primaryContact!.phoneNumber);
+      // Make call only
+      bool callInitiated = await SmsService.makeEmergencyCall(_primaryContact!.phoneNumber);
       
       // Hide loading dialog
       if (mounted) {
         Navigator.of(context).pop();
         
-        if (smsSent) {
+        if (callInitiated) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Emergency SMS sent and call initiated!'),
+              content: Text('Emergency call initiated!'),
               backgroundColor: Colors.green,
             ),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Emergency call initiated! SMS may not have been sent.'),
-              backgroundColor: Colors.orange,
+              content: Text('Failed to initiate call. Please try again.'),
+              backgroundColor: Colors.red,
             ),
           );
         }
@@ -87,7 +87,74 @@ class _EmergencyHelpPageState extends State<EmergencyHelpPage> {
         
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Error opening emergency alert'),
+            content: Text('Error initiating emergency call'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _sendEmergencySms() async {
+    if (_primaryContact == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No emergency contact set. Please add one first.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 20),
+            Text('Sending emergency SMS...'),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      // Send SMS only
+      bool smsSent = await SmsService.sendEmergencySmsOnly(_primaryContact!.phoneNumber);
+      
+      // Hide loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+        
+        if (smsSent) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Emergency SMS sent with location!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to send SMS. Please try again.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // Hide loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error sending emergency SMS'),
             backgroundColor: Colors.red,
           ),
         );
@@ -169,7 +236,7 @@ class _EmergencyHelpPageState extends State<EmergencyHelpPage> {
                 const SizedBox(height: 20),
                 
                 Text(
-                  'Tap the button below to automatically send your location via SMS and call your emergency contact',
+                  'Choose your emergency action below',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 18,
@@ -267,49 +334,104 @@ class _EmergencyHelpPageState extends State<EmergencyHelpPage> {
                   const SizedBox(height: 40),
                 ],
                 
-                // Emergency Call Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 80,
-                  child: ElevatedButton(
-                    onPressed: _primaryContact != null ? _makeEmergencyCall : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _primaryContact != null 
-                          ? Colors.red[600] 
-                          : Colors.grey[400],
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                // Emergency Buttons
+                if (_primaryContact != null) ...[
+                  // Call Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 70,
+                    child: ElevatedButton(
+                      onPressed: _makeEmergencyCall,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red[600],
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 8,
                       ),
-                      elevation: 8,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.location_on,
-                          size: 28,
-                        ),
-                        const SizedBox(width: 8),
-                        const Icon(
-                          Icons.phone,
-                          size: 28,
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          _primaryContact != null 
-                              ? 'SEND SMS & CALL' 
-                              : 'NO CONTACT SET',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.phone,
+                            size: 28,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 12),
+                          const Text(
+                            'CALL EMERGENCY CONTACT',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(height: 20),
+                  
+                  // SMS Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 70,
+                    child: ElevatedButton(
+                      onPressed: _sendEmergencySms,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange[600],
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 8,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.location_on,
+                            size: 28,
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'SEND LOCATION VIA SMS',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  // No Contact Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 70,
+                    child: ElevatedButton(
+                      onPressed: null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey[400],
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 8,
+                      ),
+                      child: const Text(
+                        'NO CONTACT SET',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 30),
                 
                 // Manage Contacts Button

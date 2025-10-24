@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jeevaan/screens/medication_management_page.dart';
 import 'package:provider/provider.dart';
 import 'screens/home_page.dart';
 import 'screens/medication_page.dart';
@@ -131,6 +132,17 @@ class _MainNavigationState extends State<MainNavigation> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const MedicineCatalogPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.notifications),
+              title: Text(languageService.translate('reminders')),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const MedicationManagementPage()),
                 );
               },
             ),

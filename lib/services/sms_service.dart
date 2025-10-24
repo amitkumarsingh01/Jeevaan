@@ -11,9 +11,18 @@ class SmsService {
       return true;
     }
     
-    // Request SMS permission if not granted
-    final result = await Permission.sms.request();
-    return result.isGranted;
+    // Request SMS permission if not granted with explanation
+    if (status.isDenied) {
+      final result = await Permission.sms.request();
+      return result.isGranted;
+    }
+    
+    // If permanently denied, return false
+    if (status.isPermanentlyDenied) {
+      return false;
+    }
+    
+    return false;
   }
 
   static Future<bool> sendEmergencySms(String phoneNumber, String message) async {
@@ -82,6 +91,46 @@ Sent from Jeevaan Emergency App''';
       }
       
       return smsSent;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // New method for call only
+  static Future<bool> makeEmergencyCall(String phoneNumber) async {
+    try {
+      final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
+      if (await canLaunchUrl(phoneUri)) {
+        await launchUrl(phoneUri);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // New method for SMS only
+  static Future<bool> sendEmergencySmsOnly(String phoneNumber) async {
+    try {
+      // Get current location
+      final position = await LocationService.getCurrentLocation();
+      
+      String message;
+      if (position != null) {
+        // Format location message
+        message = LocationService.formatLocationForSms(position);
+      } else {
+        // If location is not available, send basic emergency message
+        message = '''🚨 EMERGENCY ALERT 🚨
+
+I need help! Please call me immediately.
+
+Sent from Jeevaan Emergency App''';
+      }
+      
+      // Send SMS only
+      return await sendLocationSms(phoneNumber, message);
     } catch (e) {
       return false;
     }

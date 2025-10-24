@@ -36,6 +36,7 @@ class LanguageService extends ChangeNotifier {
       // Navigation
       'home': 'Home',
       'medications': 'Medications',
+      'reminders': 'Reminders',
       'services': 'Services',
       'profile': 'Profile',
       'emergency_help': 'Emergency Help',
@@ -177,6 +178,7 @@ class LanguageService extends ChangeNotifier {
       // Navigation
       'home': 'होम',
       'medications': 'दवाएं',
+      'reminders': 'अनुस्मारक',
       'services': 'सेवाएं',
       'profile': 'प्रोफाइल',
       'emergency_help': 'आपातकालीन सहायता',
@@ -318,6 +320,7 @@ class LanguageService extends ChangeNotifier {
       // Navigation
       'home': 'ಮನೆ',
       'medications': 'ಔಷಧಿಗಳು',
+      'reminders': 'ನೆನಪುಗಳು',
       'services': 'ಸೇವೆಗಳು',
       'profile': 'ಪ್ರೊಫೈಲ್',
       'emergency_help': 'ಅತ್ಯಾವಶ್ಯಕ ಸಹಾಯ',
@@ -459,6 +462,7 @@ class LanguageService extends ChangeNotifier {
       // Navigation
       'home': 'హోమ్',
       'medications': 'మందులు',
+      'reminders': 'గుర్తుచేతనలు',
       'services': 'సేవలు',
       'profile': 'ప్రొఫైల్',
       'emergency_help': 'అత్యవసర సహాయం',

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
+import '../main_navigation.dart';
 import 'login_page.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -12,16 +14,26 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _navigateToLogin();
+    _checkAuthAndNavigate();
   }
 
-  _navigateToLogin() async {
-    await Future.delayed(const Duration(seconds: 3), () {});
+  _checkAuthAndNavigate() async {
+    // Wait for splash screen duration
+    await Future.delayed(const Duration(seconds: 3));
+    
     if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginPage()),
-      );
+      // Check if user is already logged in
+      if (AuthService.isLoggedIn) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const MainNavigation()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+        );
+      }
     }
   }
 

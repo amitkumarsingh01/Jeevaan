@@ -15,11 +15,9 @@ class AuthService {
   static bool get isLoggedIn => _isLoggedIn;
   static User? get currentUser => _currentUser;
   
-  // Hash password using SHA-256
-  static String _hashPassword(String password) {
-    var bytes = utf8.encode(password);
-    var digest = sha256.convert(bytes);
-    return digest.toString();
+  // Store password in raw format as requested
+  static String _storePassword(String password) {
+    return password; // Store password in raw format
   }
   
   // Initialize SharedPreferences
@@ -60,8 +58,8 @@ class AuthService {
   static Future<bool> login(String email, String password, {bool rememberMe = false}) async {
     try {
       final dbHelper = DatabaseHelper();
-      final hashedPassword = _hashPassword(password);
-      final user = await dbHelper.getUserByEmailAndPassword(email, hashedPassword);
+      // Use raw password for comparison
+      final user = await dbHelper.getUserByEmailAndPassword(email, password);
       
       if (user != null) {
         _isLoggedIn = true;
@@ -88,14 +86,14 @@ class AuthService {
         return false; // Email already exists
       }
       
-      // Hash password before storing
-      final hashedPassword = _hashPassword(password);
+      // Store password in raw format as requested
+      final rawPassword = _storePassword(password);
       
       // Create new user
       final user = User(
         name: name,
         email: email,
-        password: hashedPassword,
+        password: rawPassword,
         createdAt: DateTime.now(),
       );
       
