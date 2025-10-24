@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../services/language_service.dart';
+import '../widgets/language_selector.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -7,35 +10,84 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: Text(
+          context.watch<LanguageService>().translate('language'),
+        ),
         backgroundColor: Colors.blue[600],
         foregroundColor: Colors.white,
       ),
-      body: const Center(
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              Icons.settings,
-              size: 80,
-              color: Colors.blue,
-            ),
-            SizedBox(height: 20),
-            Text(
-              'Welcome to Settings Page',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+            // Language Section
+            Card(
+              elevation: 4,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: LanguageSelector(
+                  languageService: context.watch<LanguageService>(),
+                ),
               ),
             ),
-            SizedBox(height: 10),
-            Text(
-              'Changes will come soon',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey,
-              ),
-            ),
+            
+            const SizedBox(height: 24),
+            
+            // Other Settings
+            // Card(
+            //   elevation: 4,
+            //   child: Padding(
+            //     padding: const EdgeInsets.all(16.0),
+            //     child: Column(
+            //       crossAxisAlignment: CrossAxisAlignment.start,
+            //       children: [
+            //         Text(
+            //           context.watch<LanguageService>().translate('language'),
+            //           style: const TextStyle(
+            //             fontSize: 18,
+            //             fontWeight: FontWeight.bold,
+            //           ),
+            //         ),
+            //         const SizedBox(height: 16),
+                    
+            //         // Notification Settings
+            //         ListTile(
+            //           leading: const Icon(Icons.notifications),
+            //           title: Text(
+            //             context.watch<LanguageService>().translate('notifications'),
+            //           ),
+            //           trailing: Switch(
+            //             value: true,
+            //             onChanged: (value) {
+            //               // Handle notification settings
+            //             },
+            //           ),
+            //         ),
+                    
+            //         // Theme Settings
+            //         ListTile(
+            //           leading: const Icon(Icons.palette),
+            //           title: const Text('Theme'),
+            //           trailing: const Icon(Icons.arrow_forward_ios),
+            //           onTap: () {
+            //             // Handle theme settings
+            //           },
+            //         ),
+                    
+            //         // About
+            //         ListTile(
+            //           leading: const Icon(Icons.info),
+            //           title: const Text('About'),
+            //           trailing: const Icon(Icons.arrow_forward_ios),
+            //           onTap: () {
+            //             // Handle about
+            //           },
+            //         ),
+            //       ],
+            //     ),
+            //   ),
+            // ),
           ],
         ),
       ),

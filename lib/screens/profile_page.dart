@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../services/language_service.dart';
+import 'emergency_contact_page.dart';
+import 'settings_page.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -7,14 +11,15 @@ class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = AuthService.currentUser;
+    final languageService = context.watch<LanguageService>();
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: Text(languageService.translate('profile')),
         backgroundColor: Colors.blue[600],
         foregroundColor: Colors.white,
       ),
-      body: user != null ? Padding(
+      body: user != null ? SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
@@ -62,51 +67,128 @@ class ProfilePage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Profile Information',
-                      style: TextStyle(
+                    Text(
+                      languageService.translate('profile_information'),
+                      style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 16),
-                    _buildInfoRow('Name', user.name),
+                    _buildInfoRow(languageService.translate('name'), user.name),
                     const SizedBox(height: 12),
-                    _buildInfoRow('Email', user.email),
+                    _buildInfoRow(languageService.translate('email'), user.email),
                     const SizedBox(height: 12),
-                    _buildInfoRow('Member Since', _formatDate(user.createdAt)),
+                    _buildInfoRow(languageService.translate('member_since'), _formatDate(user.createdAt)),
                   ],
                 ),
               ),
             ),
+            
             const SizedBox(height: 20),
             
-            // Edit Profile Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Edit profile feature coming soon!')),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue[600],
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  'Edit Profile',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            // Additional Profile Fields
+            Card(
+              elevation: 4,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      languageService.translate('additional_info'),
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildInfoRow(languageService.translate('age'), languageService.translate('not_set')),
+                    const SizedBox(height: 12),
+                    _buildInfoRow(languageService.translate('medical_conditions'), languageService.translate('not_set')),
+                    const SizedBox(height: 12),
+                    _buildInfoRow(languageService.translate('preferred_language'), languageService.translate('not_set')),
+                    const SizedBox(height: 12),
+                    _buildInfoRow(languageService.translate('emergency_contact'), languageService.translate('not_set')),
+                  ],
                 ),
               ),
             ),
+            
+            const SizedBox(height: 20),
+            
+            // Action Buttons
+            Column(
+              children: [
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const EmergencyContactPage()),
+                      );
+                    },
+                    icon: const Icon(Icons.emergency),
+                    label: Text(languageService.translate('manage_emergency_contacts')),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red[600],
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const SettingsPage()),
+                      );
+                    },
+                    icon: const Icon(Icons.settings),
+                    label: Text(languageService.translate('settings')),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey[600],
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(languageService.translate('edit_profile_coming_soon'))),
+                      );
+                    },
+                    icon: const Icon(Icons.edit),
+                    label: Text(languageService.translate('edit_profile')),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue[600],
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
-      ) : const Center(
+      ) : Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -115,18 +197,18 @@ class ProfilePage extends StatelessWidget {
               size: 80,
               color: Colors.blue,
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             Text(
-              'Welcome to Profile Page',
-              style: TextStyle(
+              languageService.translate('welcome_to_profile'),
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             Text(
-              'Changes will come soon',
-              style: TextStyle(
+              languageService.translate('profile_coming_soon'),
+              style: const TextStyle(
                 fontSize: 16,
                 color: Colors.grey,
               ),

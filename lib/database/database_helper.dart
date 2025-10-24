@@ -7,6 +7,7 @@ import '../models/doctor.dart';
 import '../models/appointment.dart';
 import '../models/medicine.dart';
 import '../models/order.dart';
+import '../models/user_profile.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -167,6 +168,28 @@ class DatabaseHelper {
         total_price REAL NOT NULL,
         FOREIGN KEY (order_id) REFERENCES orders (id),
         FOREIGN KEY (medicine_id) REFERENCES medicines (id)
+      )
+    ''');
+
+    // Create user_profiles table
+    await db.execute('''
+      CREATE TABLE user_profiles(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        age INTEGER NOT NULL,
+        gender TEXT NOT NULL,
+        blood_group TEXT NOT NULL,
+        medical_conditions TEXT,
+        allergies TEXT,
+        preferred_language TEXT NOT NULL,
+        phone_number TEXT NOT NULL,
+        email TEXT NOT NULL,
+        address TEXT NOT NULL,
+        emergency_contact_name TEXT NOT NULL,
+        emergency_contact_phone TEXT NOT NULL,
+        emergency_contact_relation TEXT NOT NULL,
+        last_updated INTEGER,
+        created_at INTEGER NOT NULL
       )
     ''');
   }
@@ -1008,6 +1031,57 @@ class DatabaseHelper {
       'delivered': orders.where((order) => order.status == OrderStatus.delivered).length,
       'cancelled': orders.where((order) => order.status == OrderStatus.cancelled).length,
     };
+  }
+
+  // User Profile CRUD operations
+  Future<int> insertUserProfile(UserProfile profile) async {
+    final db = await database;
+    return await db.insert('user_profiles', profile.toMap());
+  }
+
+  Future<List<UserProfile>> getAllUserProfiles() async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'user_profiles',
+      orderBy: 'created_at DESC',
+    );
+
+    return List.generate(maps.length, (i) {
+      return UserProfile.fromMap(maps[i]);
+    });
+  }
+
+  Future<UserProfile?> getUserProfile(int id) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'user_profiles',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+
+    if (maps.isNotEmpty) {
+      return UserProfile.fromMap(maps.first);
+    }
+    return null;
+  }
+
+  Future<int> updateUserProfile(UserProfile profile) async {
+    final db = await database;
+    return await db.update(
+      'user_profiles',
+      profile.toMap(),
+      where: 'id = ?',
+      whereArgs: [profile.id],
+    );
+  }
+
+  Future<int> deleteUserProfile(int id) async {
+    final db = await database;
+    return await db.delete(
+      'user_profiles',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 
   // Close database

@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'screens/home_page.dart';
 import 'screens/medication_page.dart';
 import 'screens/services_page.dart';
-import 'screens/profile_page.dart';
+import 'screens/enhanced_profile_page.dart';
 import 'screens/emergency_help_page.dart';
 import 'screens/appointment_page.dart';
 import 'screens/nearby_locations_page.dart';
 import 'screens/my_orders_page.dart';
-import 'screens/language_page.dart';
-import 'screens/notifications_page.dart';
-import 'screens/database_test_page.dart';
 import 'screens/settings_page.dart';
 import 'screens/login_page.dart';
 import 'screens/emergency_contact_page.dart';
 import 'screens/medicine_catalog_page.dart';
+import 'screens/ChatScreen.dart';
 import 'services/auth_service.dart';
+import 'services/language_service.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -29,15 +29,18 @@ class _MainNavigationState extends State<MainNavigation> {
   final List<Widget> _pages = [
     const HomePage(),
     const MedicationPage(),
+    const ChatScreen(),
     const ServicesPage(),
-    const ProfilePage(),
+    const EnhancedProfilePage(),
   ];
 
   @override
   Widget build(BuildContext context) {
+    final languageService = context.watch<LanguageService>();
+    
     return Scaffold(
       appBar: AppBar(
-        title: Text(_getAppBarTitle()),
+        title: Text(_getAppBarTitle(languageService)),
         backgroundColor: Colors.blue[600],
         foregroundColor: Colors.white,
       ),
@@ -78,7 +81,7 @@ class _MainNavigationState extends State<MainNavigation> {
             ),
             ListTile(
               leading: const Icon(Icons.emergency, color: Colors.red),
-              title: const Text('Emergency Help'),
+              title: Text(languageService.translate('emergency_help')),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -89,7 +92,7 @@ class _MainNavigationState extends State<MainNavigation> {
             ),
             ListTile(
               leading: const Icon(Icons.contacts, color: Colors.red),
-              title: const Text('Emergency Contacts'),
+              title: Text(languageService.translate('emergency_contact')),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -100,7 +103,7 @@ class _MainNavigationState extends State<MainNavigation> {
             ),
             ListTile(
               leading: const Icon(Icons.calendar_today),
-              title: const Text('Appointments'),
+              title: Text(languageService.translate('appointments')),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -111,7 +114,7 @@ class _MainNavigationState extends State<MainNavigation> {
             ),
             ListTile(
               leading: const Icon(Icons.location_on),
-              title: const Text('Nearby Locations'),
+              title: Text(languageService.translate('nearby_locations')),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -122,7 +125,7 @@ class _MainNavigationState extends State<MainNavigation> {
             ),
             ListTile(
               leading: const Icon(Icons.medication),
-              title: const Text('Medicine Catalog'),
+              title: Text(languageService.translate('medicine_catalog')),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -133,7 +136,7 @@ class _MainNavigationState extends State<MainNavigation> {
             ),
             ListTile(
               leading: const Icon(Icons.shopping_bag),
-              title: const Text('My Orders'),
+              title: Text(languageService.translate('my_orders')),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -144,29 +147,7 @@ class _MainNavigationState extends State<MainNavigation> {
             ),
             ListTile(
               leading: const Icon(Icons.language),
-              title: const Text('Language'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LanguagePage()),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.notifications),
-              title: const Text('Notifications'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const NotificationsPage()),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings),
-              title: const Text('Settings'),
+              title: Text(languageService.translate('language')),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -175,21 +156,46 @@ class _MainNavigationState extends State<MainNavigation> {
                 );
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.storage),
-              title: const Text('Database Test'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const DatabaseTestPage()),
-                );
-              },
-            ),
+            // ListTile(
+            //   leading: const Icon(Icons.notifications),
+            //   title: Text(languageService.translate('notifications')),
+            //   onTap: () {
+            //     Navigator.pop(context);
+            //     Navigator.push(
+            //       context,
+            //       MaterialPageRoute(builder: (context) => const NotificationsPage()),
+            //     );
+            //   },
+            // ),
+            // ListTile(
+            //   leading: const Icon(Icons.settings),
+            //   title: Text(languageService.translate('settings')),
+            //   onTap: () {
+            //     Navigator.pop(context);
+            //     Navigator.push(
+            //       context,
+            //       MaterialPageRoute(builder: (context) => const SettingsPage()),
+            //     );
+            //   },
+            // ),
+            // ListTile(
+            //   leading: const Icon(Icons.storage),
+            //   title: const Text('Database Test'),
+            //   onTap: () {
+            //     Navigator.pop(context);
+            //     Navigator.push(
+            //       context,
+            //       MaterialPageRoute(builder: (context) => const DatabaseTestPage()),
+            //     );
+            //   },
+            // ),
             const Divider(),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Logout', style: TextStyle(color: Colors.red)),
+              title: Text(
+                languageService.translate('logout'),
+                style: const TextStyle(color: Colors.red),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 _showLogoutDialog(context);
@@ -209,40 +215,46 @@ class _MainNavigationState extends State<MainNavigation> {
         },
         selectedItemColor: Colors.blue[600],
         unselectedItemColor: Colors.grey,
-        items: const [
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
+            icon: const Icon(Icons.home),
+            label: languageService.translate('home'),
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.medication),
-            label: 'Medication',
+            icon: const Icon(Icons.medication),
+            label: languageService.translate('medications'),
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.medical_services),
-            label: 'Services',
+            icon: const Icon(Icons.chat),
+            label: languageService.translate('chat'),
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
+            icon: const Icon(Icons.medical_services),
+            label: languageService.translate('services'),
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.person),
+            label: languageService.translate('profile'),
           ),
         ],
       ),
     );
   }
 
-  String _getAppBarTitle() {
+  String _getAppBarTitle(LanguageService languageService) {
     switch (_currentIndex) {
       case 0:
-        return 'Home';
+        return languageService.translate('home');
       case 1:
-        return 'Medication';
+        return languageService.translate('medications');
       case 2:
-        return 'Services';
+        return languageService.translate('healthcare_assistant');
       case 3:
-        return 'Profile';
+        return languageService.translate('services');
+      case 4:
+        return languageService.translate('profile');
       default:
-        return 'Jeevaan';
+        return languageService.translate('app_name');
     }
   }
 

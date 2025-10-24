@@ -57,6 +57,25 @@ dependencies:
   http: ^1.1.0
   flutter_local_notifications: ^18.0.1
 
+  # For date formatting in appointments
+  intl: ^0.20.2
+
+  # For persistent storage (remember login)
+  shared_preferences: ^2.2.2
+
+  # For internationalization
+  flutter_localizations:
+    sdk: flutter
+
+  # For state management
+  provider: ^6.1.1
+
+  # For password hashing
+  crypto: ^3.0.3
+  google_generative_ai: ^0.4.7
+  image_picker: ^1.2.0
+
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

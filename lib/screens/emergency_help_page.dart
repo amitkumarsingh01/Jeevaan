@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../models/emergency_contact.dart';
 import '../database/database_helper.dart';
-import '../services/location_service.dart';
 import '../services/sms_service.dart';
 import 'emergency_contact_page.dart';
 
@@ -59,61 +57,25 @@ class _EmergencyHelpPageState extends State<EmergencyHelpPage> {
     );
 
     try {
-      // Get current location first
-      final position = await LocationService.getCurrentLocation();
-      String locationMessage = '';
-      
-      if (position != null) {
-        locationMessage = LocationService.formatLocationForSms(position);
-      } else {
-        locationMessage = '''🚨 EMERGENCY ALERT 🚨
-
-I need help! Please call me immediately.
-
-Sent from Jeevaan Emergency App''';
-      }
-      
-      // Open SMS with location and make call
-      bool smsOpened = await SmsService.sendLocationSms(_primaryContact!.phoneNumber, locationMessage);
-      
-      // Also try to make a phone call
-      final Uri phoneUri = Uri(scheme: 'tel', path: _primaryContact!.phoneNumber);
-      bool callOpened = false;
-      if (await canLaunchUrl(phoneUri)) {
-        await launchUrl(phoneUri);
-        callOpened = true;
-      }
+      // Send SMS directly and make call automatically
+      bool smsSent = await SmsService.sendEmergencyCallAndSms(_primaryContact!.phoneNumber);
       
       // Hide loading dialog
       if (mounted) {
         Navigator.of(context).pop();
         
-        if (smsOpened && callOpened) {
+        if (smsSent) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Emergency SMS opened and call initiated!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        } else if (smsOpened) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Emergency SMS opened!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        } else if (callOpened) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Emergency call initiated!'),
+              content: Text('Emergency SMS sent and call initiated!'),
               backgroundColor: Colors.green,
             ),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Unable to open SMS or make call'),
-              backgroundColor: Colors.red,
+              content: Text('Emergency call initiated! SMS may not have been sent.'),
+              backgroundColor: Colors.orange,
             ),
           );
         }
@@ -207,7 +169,7 @@ Sent from Jeevaan Emergency App''';
                 const SizedBox(height: 20),
                 
                 Text(
-                  'Tap the button below to open SMS with your location and call your emergency contact',
+                  'Tap the button below to automatically send your location via SMS and call your emergency contact',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 18,
@@ -336,7 +298,7 @@ Sent from Jeevaan Emergency App''';
                         const SizedBox(width: 12),
                         Text(
                           _primaryContact != null 
-                              ? 'OPEN SMS & CALL' 
+                              ? 'SEND SMS & CALL' 
                               : 'NO CONTACT SET',
                           style: const TextStyle(
                             fontSize: 18,

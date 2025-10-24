@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:crypto/crypto.dart';
+import 'dart:convert';
 import '../main_navigation.dart';
 import '../screens/login_page.dart';
 import '../models/user.dart';
@@ -7,18 +10,66 @@ import '../database/database_helper.dart';
 class AuthService {
   static bool _isLoggedIn = false;
   static User? _currentUser;
+  static SharedPreferences? _prefs;
   
   static bool get isLoggedIn => _isLoggedIn;
   static User? get currentUser => _currentUser;
   
-  static Future<bool> login(String email, String password) async {
+  // Hash password using SHA-256
+  static String _hashPassword(String password) {
+    var bytes = utf8.encode(password);
+    var digest = sha256.convert(bytes);
+    return digest.toString();
+  }
+  
+  // Initialize SharedPreferences
+  static Future<void> initialize() async {
+    _prefs = await SharedPreferences.getInstance();
+    await _loadSavedLogin();
+  }
+  
+  // Load saved login state
+  static Future<void> _loadSavedLogin() async {
+    if (_prefs == null) return;
+    
+    final savedEmail = _prefs!.getString('saved_email');
+    final savedPassword = _prefs!.getString('saved_password');
+    final rememberMe = _prefs!.getBool('remember_me') ?? false;
+    
+    if (rememberMe && savedEmail != null && savedPassword != null) {
+      // Auto-login with saved credentials
+      await login(savedEmail, savedPassword);
+    }
+  }
+  
+  // Save login state
+  static Future<void> _saveLoginState(String email, String password, bool rememberMe) async {
+    if (_prefs == null) return;
+    
+    if (rememberMe) {
+      await _prefs!.setString('saved_email', email);
+      await _prefs!.setString('saved_password', password);
+      await _prefs!.setBool('remember_me', true);
+    } else {
+      await _prefs!.remove('saved_email');
+      await _prefs!.remove('saved_password');
+      await _prefs!.setBool('remember_me', false);
+    }
+  }
+  
+  static Future<bool> login(String email, String password, {bool rememberMe = false}) async {
     try {
       final dbHelper = DatabaseHelper();
-      final user = await dbHelper.getUserByEmailAndPassword(email, password);
+      final hashedPassword = _hashPassword(password);
+      final user = await dbHelper.getUserByEmailAndPassword(email, hashedPassword);
       
       if (user != null) {
         _isLoggedIn = true;
         _currentUser = user;
+        
+        // Save login state if remember me is checked
+        await _saveLoginState(email, password, rememberMe);
+        
         return true;
       }
       return false;
@@ -37,11 +88,14 @@ class AuthService {
         return false; // Email already exists
       }
       
+      // Hash password before storing
+      final hashedPassword = _hashPassword(password);
+      
       // Create new user
       final user = User(
         name: name,
         email: email,
-        password: password,
+        password: hashedPassword,
         createdAt: DateTime.now(),
       );
       
@@ -55,6 +109,11 @@ class AuthService {
   static void logout() {
     _isLoggedIn = false;
     _currentUser = null;
+    
+    // Clear saved credentials
+    _prefs?.remove('saved_email');
+    _prefs?.remove('saved_password');
+    _prefs?.setBool('remember_me', false);
   }
 }
 

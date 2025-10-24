@@ -1,11 +1,19 @@
 import 'package:url_launcher/url_launcher.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'location_service.dart';
 
 class SmsService {
+  
   static Future<bool> _checkSmsPermission() async {
-    // For SMS via url_launcher, we don't need explicit SMS permission
-    // The system will handle it when opening the SMS app
-    return true;
+    // Check if SMS permission is granted
+    final status = await Permission.sms.status;
+    if (status.isGranted) {
+      return true;
+    }
+    
+    // Request SMS permission if not granted
+    final result = await Permission.sms.request();
+    return result.isGranted;
   }
 
   static Future<bool> sendEmergencySms(String phoneNumber, String message) async {
@@ -51,38 +59,29 @@ class SmsService {
       // Get current location
       final position = await LocationService.getCurrentLocation();
       
+      String message;
       if (position != null) {
         // Format location message
-        final locationMessage = LocationService.formatLocationForSms(position);
-        
-        // Send SMS with location
-        bool smsSent = await sendLocationSms(phoneNumber, locationMessage);
-        
-        // Also try to make a phone call
-        final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
-        if (await canLaunchUrl(phoneUri)) {
-          await launchUrl(phoneUri);
-        }
-        
-        return smsSent;
+        message = LocationService.formatLocationForSms(position);
       } else {
         // If location is not available, send basic emergency message
-        final basicMessage = '''🚨 EMERGENCY ALERT 🚨
+        message = '''🚨 EMERGENCY ALERT 🚨
 
 I need help! Please call me immediately.
 
 Sent from Jeevaan Emergency App''';
-        
-        bool smsSent = await sendEmergencySms(phoneNumber, basicMessage);
-        
-        // Try to make a phone call
-        final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
-        if (await canLaunchUrl(phoneUri)) {
-          await launchUrl(phoneUri);
-        }
-        
-        return smsSent;
       }
+      
+      // Send SMS directly
+      bool smsSent = await sendLocationSms(phoneNumber, message);
+      
+      // Also try to make a phone call
+      final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
+      if (await canLaunchUrl(phoneUri)) {
+        await launchUrl(phoneUri);
+      }
+      
+      return smsSent;
     } catch (e) {
       return false;
     }

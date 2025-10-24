@@ -15,6 +15,7 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
+  bool _rememberMe = false;
 
   @override
   void dispose() {
@@ -40,6 +41,7 @@ class _LoginPageState extends State<LoginPage> {
         final success = await AuthService.login(
           _emailController.text.trim(),
           _passwordController.text,
+          rememberMe: _rememberMe,
         );
 
         // Hide loading indicator
@@ -178,6 +180,22 @@ class _LoginPageState extends State<LoginPage> {
                     }
                     return null;
                   },
+                ),
+                const SizedBox(height: 20),
+                
+                // Remember Me Checkbox
+                Row(
+                  children: [
+                    Checkbox(
+                      value: _rememberMe,
+                      onChanged: (value) {
+                        setState(() {
+                          _rememberMe = value ?? false;
+                        });
+                      },
+                    ),
+                    const Text('Remember Me'),
+                  ],
                 ),
                 const SizedBox(height: 30),
                 
