@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../widgets/voice_input_button.dart';
+import '../services/voice_service.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -16,14 +18,34 @@ class _SignupPageState extends State<SignupPage> {
   final _confirmPasswordController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
+  final VoiceService _voiceService = VoiceService();
+  bool _isVoiceCommandActive = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeVoiceService();
+  }
+
+  Future<void> _initializeVoiceService() async {
+    await _voiceService.initialize();
+  }
 
   @override
   void dispose() {
+    _voiceService.stopListening();
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  void _handleVoiceCommand(String command) {
+    final action = VoiceService.processLoginCommand(command);
+    if (action == 'signup' && _formKey.currentState!.validate()) {
+      _signup();
+    }
   }
 
   void _signup() async {
@@ -136,6 +158,14 @@ class _SignupPageState extends State<SignupPage> {
                   decoration: InputDecoration(
                     labelText: 'Full Name',
                     prefixIcon: const Icon(Icons.person),
+                    suffixIcon: VoiceInputButton(
+                      onResult: (text) {
+                        setState(() {
+                          _nameController.text = text;
+                        });
+                      },
+                      color: Colors.blue,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -161,6 +191,14 @@ class _SignupPageState extends State<SignupPage> {
                   decoration: InputDecoration(
                     labelText: 'Email',
                     prefixIcon: const Icon(Icons.email),
+                    suffixIcon: VoiceInputButton(
+                      onResult: (text) {
+                        setState(() {
+                          _emailController.text = text;
+                        });
+                      },
+                      color: Colors.blue,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -186,15 +224,28 @@ class _SignupPageState extends State<SignupPage> {
                   decoration: InputDecoration(
                     labelText: 'Password',
                     prefixIcon: const Icon(Icons.lock),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _isPasswordVisible = !_isPasswordVisible;
-                        });
-                      },
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        VoiceInputButton(
+                          onResult: (text) {
+                            setState(() {
+                              _passwordController.text = text;
+                            });
+                          },
+                          color: Colors.blue,
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _isPasswordVisible = !_isPasswordVisible;
+                            });
+                          },
+                        ),
+                      ],
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -221,15 +272,28 @@ class _SignupPageState extends State<SignupPage> {
                   decoration: InputDecoration(
                     labelText: 'Confirm Password',
                     prefixIcon: const Icon(Icons.lock_outline),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _isConfirmPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
-                        });
-                      },
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        VoiceInputButton(
+                          onResult: (text) {
+                            setState(() {
+                              _confirmPasswordController.text = text;
+                            });
+                          },
+                          color: Colors.blue,
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            _isConfirmPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                            });
+                          },
+                        ),
+                      ],
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -247,7 +311,54 @@ class _SignupPageState extends State<SignupPage> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 30),
+                const SizedBox(height: 20),
+                
+                // Voice Command Button
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        _isVoiceCommandActive ? Icons.mic : Icons.mic_none,
+                        color: _isVoiceCommandActive ? Colors.red : Colors.blue,
+                      ),
+                      onPressed: () async {
+                        if (!_isVoiceCommandActive) {
+                          setState(() {
+                            _isVoiceCommandActive = true;
+                          });
+                          await _voiceService.startListening(
+                            onResult: (command) {
+                              setState(() {
+                                _isVoiceCommandActive = false;
+                              });
+                              _handleVoiceCommand(command);
+                            },
+                            onError: () {
+                              setState(() {
+                                _isVoiceCommandActive = false;
+                              });
+                            },
+                          );
+                        } else {
+                          await _voiceService.stopListening();
+                          setState(() {
+                            _isVoiceCommandActive = false;
+                          });
+                        }
+                      },
+                    ),
+                    Text(
+                      _isVoiceCommandActive ? 'Listening... Say "Sign Up"' : 'Tap to use voice command',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.blue[600],
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
                 
                 // Sign Up Button
                 ElevatedButton(

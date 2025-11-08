@@ -98,7 +98,10 @@ class _MedicineCatalogPageState extends State<MedicineCatalogPage> {
               MaterialPageRoute(
                 builder: (context) => CartPage(cart: _cart),
               ),
-            ).then((_) => setState(() {}));
+            ).then((result) {
+              // Refresh the UI when returning from cart
+              setState(() {});
+            });
           },
         ),
       ),
@@ -126,7 +129,10 @@ class _MedicineCatalogPageState extends State<MedicineCatalogPage> {
                     MaterialPageRoute(
                       builder: (context) => CartPage(cart: _cart),
                     ),
-                  ).then((_) => setState(() {}));
+                  ).then((result) {
+                    // Refresh the UI when returning from cart
+                    setState(() {});
+                  });
                 },
                 icon: const Icon(Icons.shopping_cart),
               ),

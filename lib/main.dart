@@ -21,9 +21,9 @@ void main() async {
   // Initialize medication reminder service
   await MedicationReminderService.initialize();
   
-  // Reset database to ensure all tables are created
+  // Initialize database (don't reset on every startup)
   final dbHelper = DatabaseHelper();
-  await dbHelper.resetDatabase();
+  await dbHelper.database; // This will create tables if they don't exist
   
   // Add sample users if none exist
   await DummyDataService.addDummyUsers();

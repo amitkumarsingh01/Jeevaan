@@ -52,21 +52,33 @@ class _CartPageState extends State<CartPage> {
 
   void _updateQuantity(int index, int newQuantity) {
     if (newQuantity <= 0) {
+      final medicineId = _cart[index]['medicineId'];
       setState(() {
         _cart.removeAt(index);
       });
+      // Update parent cart by finding and removing the item
+      widget.cart.removeWhere((item) => item['medicineId'] == medicineId);
     } else {
+      final medicineId = _cart[index]['medicineId'];
       setState(() {
         _cart[index]['quantity'] = newQuantity;
       });
+      // Update parent cart
+      final parentIndex = widget.cart.indexWhere((item) => item['medicineId'] == medicineId);
+      if (parentIndex != -1) {
+        widget.cart[parentIndex]['quantity'] = newQuantity;
+      }
     }
     _calculateTotals();
   }
 
   void _removeItem(int index) {
+    final medicineId = _cart[index]['medicineId'];
     setState(() {
       _cart.removeAt(index);
     });
+    // Update the parent cart by finding and removing the item
+    widget.cart.removeWhere((item) => item['medicineId'] == medicineId);
     _calculateTotals();
   }
 
@@ -296,9 +308,13 @@ class _CartPageState extends State<CartPage> {
                           MaterialPageRoute(
                             builder: (context) => CheckoutPage(cart: _cart, totals: _totals),
                           ),
-                        ).then((_) {
+                        ).then((result) {
                           // Clear cart after successful checkout
-                          Navigator.pop(context, true);
+                          if (result == true) {
+                            _cart.clear();
+                            widget.cart.clear();
+                          }
+                          Navigator.pop(context, result);
                         });
                       },
                       style: ElevatedButton.styleFrom(

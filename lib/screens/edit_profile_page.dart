@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/user_profile.dart';
 import '../database/database_helper.dart';
 import '../services/language_service.dart';
+import '../widgets/voice_input_button.dart';
 
 class EditProfilePage extends StatefulWidget {
   final UserProfile? profile;
@@ -185,12 +186,27 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  _buildTextField(
+                  TextFormField(
                     controller: _addressController,
-                    label: languageService.translate('address'),
                     maxLines: 3,
                     validator: (value) => value?.isEmpty == true 
                         ? languageService.translate('address_required') : null,
+                    decoration: InputDecoration(
+                      labelText: languageService.translate('address'),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey[50],
+                      suffixIcon: VoiceInputButton(
+                        onResult: (text) {
+                          setState(() {
+                            _addressController.text = text;
+                          });
+                        },
+                        color: Colors.blue,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -332,6 +348,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
         ),
         filled: true,
         fillColor: Colors.grey[50],
+        suffixIcon: maxLines == 1 ? VoiceInputButton(
+          onResult: (text) {
+            setState(() {
+              controller.text = text;
+            });
+          },
+          color: Colors.blue,
+        ) : null,
       ),
     );
   }

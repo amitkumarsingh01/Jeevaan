@@ -19,16 +19,23 @@ class _SplashScreenState extends State<SplashScreen> {
 
   _checkAuthAndNavigate() async {
     // Wait for splash screen duration
-    await Future.delayed(const Duration(seconds: 3));
+    await Future.delayed(const Duration(seconds: 2));
     
     if (mounted) {
-      // Check if user is already logged in
-      if (AuthService.isLoggedIn) {
+      // Wait a bit more for auth service to fully initialize
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      // Try to restore login state if user was previously logged in
+      final restored = await AuthService.forceRestoreLoginState();
+      
+      if (AuthService.isLoggedIn || restored) {
+        print('User is logged in or login state restored, navigating to main app');
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const MainNavigation()),
         );
       } else {
+        print('User is not logged in, navigating to login page');
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const LoginPage()),

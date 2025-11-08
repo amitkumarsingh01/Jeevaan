@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:provider/provider.dart';
 import '../services/language_service.dart';
+import '../widgets/voice_input_button.dart';
 
 
 class ChatScreen extends StatelessWidget {
@@ -332,6 +333,14 @@ class _JeevaanAIState extends State<JeevaanAI> {
                           ),
                           filled: true,
                           fillColor: Colors.grey[100],
+                          suffixIcon: VoiceInputButton(
+                            onResult: (text) {
+                              setState(() {
+                                _textController.text = text;
+                              });
+                            },
+                            color: Colors.blue,
+                          ),
                         ),
                         onSubmitted: (_) => _handleSubmit(),
                       ),

@@ -35,9 +35,9 @@ android {
         release {
             // Enable code shrinking, obfuscation, and optimization
             isMinifyEnabled = true
-            isShrinkResources = true
+            isShrinkResources = false  // Disable resource shrinking to avoid issues
             proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
+                getDefaultProguardFile("proguard-android.txt"),  // Use less aggressive optimization
                 "proguard-rules.pro"
             )
             // TODO: Add your own signing config for the release build.
@@ -53,4 +53,6 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+    implementation("com.google.android.play:core:1.10.3")
+    implementation("com.google.android.play:core-ktx:1.8.1")
 }

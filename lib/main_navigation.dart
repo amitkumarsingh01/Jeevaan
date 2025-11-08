@@ -14,8 +14,10 @@ import 'screens/login_page.dart';
 import 'screens/emergency_contact_page.dart';
 import 'screens/medicine_catalog_page.dart';
 import 'screens/ChatScreen.dart';
+import 'screens/health_news_page.dart';
 import 'services/auth_service.dart';
 import 'services/language_service.dart';
+import 'services/voice_service.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -26,6 +28,8 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
+  final VoiceService _voiceService = VoiceService();
+  bool _isVoiceCommandActive = false;
 
   final List<Widget> _pages = [
     const HomePage(),
@@ -36,6 +40,99 @@ class _MainNavigationState extends State<MainNavigation> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _initializeVoiceService();
+  }
+
+  Future<void> _initializeVoiceService() async {
+    await _voiceService.initialize();
+  }
+
+  @override
+  void dispose() {
+    _voiceService.stopListening();
+    super.dispose();
+  }
+
+  void _handleVoiceCommand(String command) {
+    final action = VoiceService.processNavigationCommand(command);
+    
+    if (action == null) return;
+
+    switch (action) {
+      case 'home':
+        setState(() {
+          _currentIndex = 0;
+        });
+        break;
+      case 'medications':
+        setState(() {
+          _currentIndex = 1;
+        });
+        break;
+      case 'chat':
+        setState(() {
+          _currentIndex = 2;
+        });
+        break;
+      case 'services':
+        setState(() {
+          _currentIndex = 3;
+        });
+        break;
+      case 'profile':
+        setState(() {
+          _currentIndex = 4;
+        });
+        break;
+      case 'emergency':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const EmergencyHelpPage()),
+        );
+        break;
+      case 'appointments':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const AppointmentPage()),
+        );
+        break;
+      case 'locations':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const NearbyLocationsPage()),
+        );
+        break;
+      case 'orders':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const MyOrdersPage()),
+        );
+        break;
+      case 'settings':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const SettingsPage()),
+        );
+        break;
+      case 'news':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const HealthNewsPage()),
+        );
+        break;
+    }
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Navigated to: $action'),
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final languageService = context.watch<LanguageService>();
     
@@ -44,6 +141,48 @@ class _MainNavigationState extends State<MainNavigation> {
         title: Text(_getAppBarTitle(languageService)),
         backgroundColor: Colors.blue[600],
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: Icon(
+              _isVoiceCommandActive ? Icons.mic : Icons.mic_none,
+              color: _isVoiceCommandActive ? Colors.red : Colors.white,
+            ),
+            tooltip: 'Voice Navigation',
+            onPressed: () async {
+              if (!_isVoiceCommandActive) {
+                setState(() {
+                  _isVoiceCommandActive = true;
+                });
+                await _voiceService.startListening(
+                  onResult: (command) {
+                    setState(() {
+                      _isVoiceCommandActive = false;
+                    });
+                    _handleVoiceCommand(command);
+                  },
+                  onError: () {
+                    setState(() {
+                      _isVoiceCommandActive = false;
+                    });
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Voice recognition error. Please try again.'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  },
+                );
+              } else {
+                await _voiceService.stopListening();
+                setState(() {
+                  _isVoiceCommandActive = false;
+                });
+              }
+            },
+          ),
+        ],
       ),
       drawer: Drawer(
         child: ListView(
@@ -154,6 +293,17 @@ class _MainNavigationState extends State<MainNavigation> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const MyOrdersPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.newspaper),
+              title: const Text('Health News'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const HealthNewsPage()),
                 );
               },
             ),
@@ -283,9 +433,9 @@ class _MainNavigationState extends State<MainNavigation> {
               child: const Text('Cancel'),
             ),
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.of(context).pop();
-                AuthService.logout();
+                await AuthService.logout();
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(builder: (context) => const LoginPage()),

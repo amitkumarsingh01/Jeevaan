@@ -27,11 +27,19 @@ class _MedicationPageState extends State<MedicationPage> {
       _isLoading = true;
     });
     
-    final medications = await _dbHelper.getMedicationsForToday();
-    setState(() {
-      _todayMedications = medications;
-      _isLoading = false;
-    });
+    try {
+      // Get all active medications, not just today's
+      final medications = await _dbHelper.getActiveMedications();
+      setState(() {
+        _todayMedications = medications;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading medications: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _markAsTaken(Medication medication) async {
@@ -84,7 +92,7 @@ class _MedicationPageState extends State<MedicationPage> {
                       ),
                       const SizedBox(height: 10),
                       const Text(
-                        'You have no medications scheduled for today',
+                        'You have no active medications',
                         style: TextStyle(fontSize: 16, color: Colors.grey),
                       ),
                       const SizedBox(height: 30),
@@ -149,7 +157,7 @@ class _MedicationPageState extends State<MedicationPage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Today\'s Medications',
+                                  'Active Medications',
                                   style: TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold,
@@ -157,7 +165,7 @@ class _MedicationPageState extends State<MedicationPage> {
                                   ),
                                 ),
                                 Text(
-                                  '${_todayMedications.length} medications scheduled',
+                                  '${_todayMedications.length} active medications',
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: Colors.blue[600],

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../models/doctor.dart';
 import '../models/appointment.dart';
 import '../services/appointment_service.dart';
+import '../database/database_helper.dart';
+import '../widgets/voice_input_button.dart';
 
 class AppointmentBookingPage extends StatefulWidget {
   final Doctor doctor;
@@ -33,6 +35,20 @@ class _AppointmentBookingPageState extends State<AppointmentBookingPage> {
   void initState() {
     super.initState();
     _loadAvailableTimeSlots();
+    _loadUserProfile();
+  }
+
+  Future<void> _loadUserProfile() async {
+    final dbHelper = DatabaseHelper();
+    final profiles = await dbHelper.getAllUserProfiles();
+    if (profiles.isNotEmpty) {
+      final profile = profiles.first;
+      setState(() {
+        _nameController.text = profile.name;
+        _phoneController.text = profile.phoneNumber;
+        _emailController.text = profile.email;
+      });
+    }
   }
 
   @override
@@ -369,10 +385,18 @@ class _AppointmentBookingPageState extends State<AppointmentBookingPage> {
 
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Full Name',
-                  prefixIcon: Icon(Icons.person),
-                  border: OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.person),
+                  suffixIcon: VoiceInputButton(
+                    onResult: (text) {
+                      setState(() {
+                        _nameController.text = text;
+                      });
+                    },
+                    color: Colors.blue,
+                  ),
+                  border: const OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -385,10 +409,18 @@ class _AppointmentBookingPageState extends State<AppointmentBookingPage> {
 
               TextFormField(
                 controller: _phoneController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Phone Number',
-                  prefixIcon: Icon(Icons.phone),
-                  border: OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.phone),
+                  suffixIcon: VoiceInputButton(
+                    onResult: (text) {
+                      setState(() {
+                        _phoneController.text = text;
+                      });
+                    },
+                    color: Colors.blue,
+                  ),
+                  border: const OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.phone,
                 validator: (value) {
@@ -402,10 +434,18 @@ class _AppointmentBookingPageState extends State<AppointmentBookingPage> {
 
               TextFormField(
                 controller: _emailController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Email',
-                  prefixIcon: Icon(Icons.email),
-                  border: OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.email),
+                  suffixIcon: VoiceInputButton(
+                    onResult: (text) {
+                      setState(() {
+                        _emailController.text = text;
+                      });
+                    },
+                    color: Colors.blue,
+                  ),
+                  border: const OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.emailAddress,
                 validator: (value) {
@@ -419,10 +459,18 @@ class _AppointmentBookingPageState extends State<AppointmentBookingPage> {
 
               TextFormField(
                 controller: _reasonController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Reason for Visit',
-                  prefixIcon: Icon(Icons.info),
-                  border: OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.info),
+                  suffixIcon: VoiceInputButton(
+                    onResult: (text) {
+                      setState(() {
+                        _reasonController.text = text;
+                      });
+                    },
+                    color: Colors.blue,
+                  ),
+                  border: const OutlineInputBorder(),
                 ),
                 maxLines: 2,
                 validator: (value) {
@@ -436,10 +484,18 @@ class _AppointmentBookingPageState extends State<AppointmentBookingPage> {
 
               TextFormField(
                 controller: _notesController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Additional Notes (Optional)',
-                  prefixIcon: Icon(Icons.note),
-                  border: OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.note),
+                  suffixIcon: VoiceInputButton(
+                    onResult: (text) {
+                      setState(() {
+                        _notesController.text = text;
+                      });
+                    },
+                    color: Colors.blue,
+                  ),
+                  border: const OutlineInputBorder(),
                 ),
                 maxLines: 3,
               ),

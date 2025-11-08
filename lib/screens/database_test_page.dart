@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
-import '../models/user.dart';
+import '../services/auth_service.dart';
 
 class DatabaseTestPage extends StatefulWidget {
   const DatabaseTestPage({super.key});
@@ -10,20 +10,125 @@ class DatabaseTestPage extends StatefulWidget {
 }
 
 class _DatabaseTestPageState extends State<DatabaseTestPage> {
-  final DatabaseHelper _dbHelper = DatabaseHelper();
-  List<User> _users = [];
+  Map<String, dynamic>? _dbInfo;
+  bool _isLoading = false;
+  String _testResult = '';
 
   @override
   void initState() {
     super.initState();
-    _loadUsers();
+    _loadDatabaseInfo();
   }
 
-  Future<void> _loadUsers() async {
-    final users = await _dbHelper.getAllUsers();
+  Future<void> _loadDatabaseInfo() async {
     setState(() {
-      _users = users;
+      _isLoading = true;
     });
+
+    try {
+      final dbHelper = DatabaseHelper();
+      final info = await dbHelper.getDatabaseInfo();
+      setState(() {
+        _dbInfo = info;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _dbInfo = {'error': e.toString()};
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _testDatabaseConnection() async {
+    setState(() {
+      _isLoading = true;
+      _testResult = '';
+    });
+
+    try {
+      final dbHelper = DatabaseHelper();
+      final isConnected = await dbHelper.testConnection();
+      
+      setState(() {
+        _testResult = isConnected ? 'Database connection successful!' : 'Database connection failed!';
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _testResult = 'Database test error: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _testUserLogin() async {
+    setState(() {
+      _isLoading = true;
+      _testResult = '';
+    });
+
+    try {
+      // Test with a sample user
+      final success = await AuthService.login('test@example.com', 'password123');
+      
+      setState(() {
+        _testResult = success ? 'Login test successful!' : 'Login test failed - user not found or invalid credentials';
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _testResult = 'Login test error: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _testAutoLogin() async {
+    setState(() {
+      _isLoading = true;
+      _testResult = '';
+    });
+
+    try {
+      // Test auto-login functionality
+      final shouldStay = await AuthService.shouldStayLoggedIn();
+      final restored = await AuthService.forceRestoreLoginState();
+      
+      setState(() {
+        _testResult = 'Auto-login test:\n- Should stay logged in: $shouldStay\n- Force restore result: $restored\n- Current login state: ${AuthService.isLoggedIn}';
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _testResult = 'Auto-login test error: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _createTestUser() async {
+    setState(() {
+      _isLoading = true;
+      _testResult = '';
+    });
+
+    try {
+      final success = await AuthService.register('Test User', 'test@example.com', 'password123');
+      
+      setState(() {
+        _testResult = success ? 'Test user created successfully!' : 'Failed to create test user';
+        _isLoading = false;
+      });
+      
+      // Reload database info
+      await _loadDatabaseInfo();
+    } catch (e) {
+      setState(() {
+        _testResult = 'Create user error: $e';
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -37,67 +142,103 @@ class _DatabaseTestPageState extends State<DatabaseTestPage> {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'Registered Users (${_users.length})',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: _users.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'No users registered yet.\nTry signing up first!',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                      ),
-                    )
-                  : ListView.builder(
-                      itemCount: _users.length,
-                      itemBuilder: (context, index) {
-                        final user = _users[index];
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: Colors.white,
-                              child: ClipOval(
-                                child: Image.asset(
-                                  'assets/logo.png',
-                                  width: 40,
-                                  height: 40,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            ),
-                            title: Text(user.name),
-                            subtitle: Text(user.email),
-                            trailing: Text(
-                              'ID: ${user.id}',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ),
-                        );
-                      },
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Database Information',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _loadUsers,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue[600],
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                    const SizedBox(height: 10),
+                    if (_isLoading)
+                      const CircularProgressIndicator()
+                    else if (_dbInfo != null)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Connected: ${_dbInfo!['connected']}'),
+                          Text('Users: ${_dbInfo!['users'] ?? 'N/A'}'),
+                          Text('Medicines: ${_dbInfo!['medicines'] ?? 'N/A'}'),
+                          Text('Doctors: ${_dbInfo!['doctors'] ?? 'N/A'}'),
+                          if (_dbInfo!['error'] != null)
+                            Text('Error: ${_dbInfo!['error']}', style: const TextStyle(color: Colors.red)),
+                        ],
+                      )
+                    else
+                      const Text('No data available'),
+                  ],
                 ),
-                child: const Text('Refresh Users'),
               ),
             ),
+            const SizedBox(height: 20),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Test Results',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 10),
+                    if (_testResult.isNotEmpty)
+                      Text(_testResult),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _isLoading ? null : _testDatabaseConnection,
+              child: const Text('Test Database Connection'),
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: _isLoading ? null : _createTestUser,
+              child: const Text('Create Test User'),
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: _isLoading ? null : _testUserLogin,
+              child: const Text('Test User Login'),
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: _isLoading ? null : _testAutoLogin,
+              child: const Text('Test Auto-Login'),
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: _isLoading ? null : _loadDatabaseInfo,
+              child: const Text('Refresh Database Info'),
+            ),
+            const SizedBox(height: 20),
+            if (AuthService.isLoggedIn)
+              Card(
+                color: Colors.green[100],
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Current User',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 10),
+                      Text('Name: ${AuthService.currentUser?.name ?? 'N/A'}'),
+                      Text('Email: ${AuthService.currentUser?.email ?? 'N/A'}'),
+                      Text('Logged In: ${AuthService.isLoggedIn}'),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),

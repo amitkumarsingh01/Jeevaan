@@ -29,6 +29,10 @@ class DatabaseHelper {
       version: 2,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
+      onOpen: (db) async {
+        // Enable foreign key constraints
+        await db.execute('PRAGMA foreign_keys = ON');
+      },
     );
   }
 
@@ -260,9 +264,18 @@ class DatabaseHelper {
   Future<int> insertUser(User user) async {
     final db = await database;
     try {
+      // Check if email already exists
+      final existingUser = await getUserByEmail(user.email);
+      if (existingUser != null) {
+        throw Exception('Email already exists');
+      }
+      
       return await db.insert('users', user.toMap());
     } catch (e) {
-      throw Exception('Email already exists');
+      if (e.toString().contains('UNIQUE constraint failed')) {
+        throw Exception('Email already exists');
+      }
+      rethrow;
     }
   }
 
@@ -284,16 +297,21 @@ class DatabaseHelper {
   // Get user by email and password (for login)
   Future<User?> getUserByEmailAndPassword(String email, String password) async {
     final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'users',
-      where: 'email = ? AND password = ?',
-      whereArgs: [email, password],
-    );
+    try {
+      final List<Map<String, dynamic>> maps = await db.query(
+        'users',
+        where: 'email = ? AND password = ?',
+        whereArgs: [email, password],
+      );
 
-    if (maps.isNotEmpty) {
-      return User.fromMap(maps.first);
+      if (maps.isNotEmpty) {
+        return User.fromMap(maps.first);
+      }
+      return null;
+    } catch (e) {
+      print('Database error in getUserByEmailAndPassword: $e');
+      return null;
     }
-    return null;
   }
 
   // Get all users
@@ -330,12 +348,17 @@ class DatabaseHelper {
   // Check if email exists
   Future<bool> emailExists(String email) async {
     final db = await database;
-    final List<Map<String, dynamic>> result = await db.query(
-      'users',
-      where: 'email = ?',
-      whereArgs: [email],
-    );
-    return result.isNotEmpty;
+    try {
+      final List<Map<String, dynamic>> result = await db.query(
+        'users',
+        where: 'email = ?',
+        whereArgs: [email],
+      );
+      return result.isNotEmpty;
+    } catch (e) {
+      print('Database error in emailExists: $e');
+      return false;
+    }
   }
 
   // Emergency Contact Methods
@@ -441,21 +464,48 @@ class DatabaseHelper {
   
   // Insert a new medication
   Future<int> insertMedication(Medication medication) async {
-    final db = await database;
-    return await db.insert('medications', medication.toMap());
+    try {
+      final db = await database;
+      final map = medication.toMap();
+      print('Inserting medication: ${medication.name}');
+      print('Medication map: $map');
+      final id = await db.insert('medications', map);
+      print('Medication inserted with ID: $id');
+      return id;
+    } catch (e) {
+      print('Error inserting medication: $e');
+      print('Medication data: ${medication.toMap()}');
+      rethrow;
+    }
   }
 
   // Get all medications
   Future<List<Medication>> getAllMedications() async {
-    final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'medications',
-      orderBy: 'created_at DESC',
-    );
+    try {
+      final db = await database;
+      final List<Map<String, dynamic>> maps = await db.query(
+        'medications',
+        orderBy: 'created_at DESC',
+      );
 
-    return List.generate(maps.length, (i) {
-      return Medication.fromMap(maps[i]);
-    });
+      print('Found ${maps.length} medications in database');
+      
+      final medications = <Medication>[];
+      for (var map in maps) {
+        try {
+          final medication = Medication.fromMap(map);
+          medications.add(medication);
+        } catch (e) {
+          print('Error parsing medication: $e');
+          print('Medication data: $map');
+        }
+      }
+      
+      return medications;
+    } catch (e) {
+      print('Error getting all medications: $e');
+      return [];
+    }
   }
 
   // Get active medications
@@ -476,7 +526,9 @@ class DatabaseHelper {
   // Get medications for today
   Future<List<Medication>> getMedicationsForToday() async {
     final activeMedications = await getActiveMedications();
-    final today = DateTime.now().weekday % 7; // Convert to 0-6 format
+    // Convert DateTime.weekday (1-7, Monday=1, Sunday=7) to our format (0-6, Sunday=0, Saturday=6)
+    final weekday = DateTime.now().weekday;
+    final today = weekday == 7 ? 0 : weekday - 1; // Sunday: 7->0, Monday: 1->1, etc.
     
     return activeMedications.where((med) => med.daysOfWeek.contains(today)).toList();
   }
@@ -1082,6 +1134,40 @@ class DatabaseHelper {
       where: 'id = ?',
       whereArgs: [id],
     );
+  }
+
+  // Test database connectivity
+  Future<bool> testConnection() async {
+    try {
+      final db = await database;
+      await db.rawQuery('SELECT 1');
+      return true;
+    } catch (e) {
+      print('Database connection test failed: $e');
+      return false;
+    }
+  }
+
+  // Get database info for debugging
+  Future<Map<String, dynamic>> getDatabaseInfo() async {
+    try {
+      final db = await database;
+      final userCount = await db.rawQuery('SELECT COUNT(*) as count FROM users');
+      final medicineCount = await db.rawQuery('SELECT COUNT(*) as count FROM medicines');
+      final doctorCount = await db.rawQuery('SELECT COUNT(*) as count FROM doctors');
+      
+      return {
+        'users': userCount.first['count'],
+        'medicines': medicineCount.first['count'],
+        'doctors': doctorCount.first['count'],
+        'connected': true,
+      };
+    } catch (e) {
+      return {
+        'error': e.toString(),
+        'connected': false,
+      };
+    }
   }
 
   // Close database

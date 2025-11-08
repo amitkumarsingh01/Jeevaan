@@ -7,6 +7,7 @@ import 'medication_page.dart';
 import 'appointment_page.dart';
 import 'nearby_locations_page.dart';
 import 'medicine_catalog_page.dart';
+import 'health_news_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -147,10 +148,13 @@ class HomePage extends StatelessWidget {
                 _buildQuickActionCard(
                   context,
                   languageService,
-                  Icons.health_and_safety,
-                  languageService.translate('health_tips'),
-                  Colors.indigo,
-                  () => _showHealthTips(context, languageService),
+                  Icons.newspaper,
+                  'Health News',
+                  Colors.cyan,
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const HealthNewsPage()),
+                  ),
                 ),
               ],
             ),
@@ -158,7 +162,7 @@ class HomePage extends StatelessWidget {
             const SizedBox(height: 24),
             
             // Health Stats (Placeholder)
-            _buildHealthStatsCard(languageService),
+            // _buildHealthStatsCard(languageService),
           ],
         ),
       ),

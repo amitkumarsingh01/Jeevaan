@@ -76,6 +76,9 @@ dependencies:
   # For Chatbot
   google_generative_ai: ^0.4.7
   image_picker: ^1.2.0
+  
+  # For voice recognition and speech-to-text
+  speech_to_text: ^7.0.0
 
 
 dev_dependencies:

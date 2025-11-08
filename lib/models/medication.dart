@@ -44,25 +44,41 @@ class Medication {
 
   // Create Medication object from Map retrieved from database
   factory Medication.fromMap(Map<String, dynamic> map) {
-    return Medication(
-      id: map['id'],
-      name: map['name'],
-      dosage: map['dosage'],
-      instructions: map['instructions'],
-      reminderTimes: map['reminder_times'] != null 
-          ? map['reminder_times'].split(',').map((e) => int.parse(e)).toList()
-          : [],
-      daysOfWeek: map['days_of_week'] != null 
-          ? map['days_of_week'].split(',').map((e) => int.parse(e)).toList()
-          : [],
-      isActive: map['is_active'] == 1,
-      createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at']),
-      lastTaken: map['last_taken'] != null 
-          ? DateTime.fromMillisecondsSinceEpoch(map['last_taken'])
-          : null,
-      streakCount: map['streak_count'] ?? 0,
-      voiceNote: map['voice_note'],
-    );
+    try {
+      // Parse reminder times
+      List<int> reminderTimes = [];
+      if (map['reminder_times'] != null && map['reminder_times'].toString().isNotEmpty) {
+        final timesStr = map['reminder_times'].toString();
+        reminderTimes = timesStr.split(',').where((e) => e.trim().isNotEmpty).map((e) => int.parse(e.trim())).toList();
+      }
+      
+      // Parse days of week
+      List<int> daysOfWeek = [];
+      if (map['days_of_week'] != null && map['days_of_week'].toString().isNotEmpty) {
+        final daysStr = map['days_of_week'].toString();
+        daysOfWeek = daysStr.split(',').where((e) => e.trim().isNotEmpty).map((e) => int.parse(e.trim())).toList();
+      }
+      
+      return Medication(
+        id: map['id'] as int?,
+        name: map['name'] as String? ?? '',
+        dosage: map['dosage'] as String? ?? '',
+        instructions: map['instructions'] as String? ?? '',
+        reminderTimes: reminderTimes,
+        daysOfWeek: daysOfWeek,
+        isActive: (map['is_active'] as int? ?? 1) == 1,
+        createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at'] as int),
+        lastTaken: map['last_taken'] != null 
+            ? DateTime.fromMillisecondsSinceEpoch(map['last_taken'] as int)
+            : null,
+        streakCount: map['streak_count'] as int? ?? 0,
+        voiceNote: map['voice_note'] as String?,
+      );
+    } catch (e) {
+      print('Error parsing medication from map: $e');
+      print('Map data: $map');
+      rethrow;
+    }
   }
 
   // Create a copy of Medication with updated fields
@@ -114,7 +130,9 @@ class Medication {
   // Check if medication should be taken today
   bool shouldTakeToday() {
     if (!isActive) return false;
-    final today = DateTime.now().weekday % 7; // Convert to 0-6 format
+    // Convert DateTime.weekday (1-7, Monday=1, Sunday=7) to our format (0-6, Sunday=0, Saturday=6)
+    final weekday = DateTime.now().weekday;
+    final today = weekday == 7 ? 0 : weekday - 1; // Sunday: 7->0, Monday: 1->1, etc.
     return daysOfWeek.contains(today);
   }
 

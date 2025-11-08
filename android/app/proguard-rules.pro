@@ -45,3 +45,28 @@
 # Keep notification classes
 -keep class androidx.core.app.NotificationCompat** { *; }
 -keep class androidx.work.** { *; }
+
+# Google Play Core rules to fix R8 issues
+-keep class com.google.android.play.core.** { *; }
+-dontwarn com.google.android.play.core.**
+
+# Keep Google Play Services
+-keep class com.google.android.gms.** { *; }
+-dontwarn com.google.android.gms.**
+
+# Keep Google Maps
+-keep class com.google.android.gms.maps.** { *; }
+-dontwarn com.google.android.gms.maps.**
+
+# Keep all classes that might be referenced by reflection
+-keepattributes *Annotation*
+-keepattributes Signature
+-keepattributes InnerClasses
+-keepattributes EnclosingMethod
+
+# Keep all public classes in packages that might be used by plugins
+-keep class com.google.** { *; }
+-dontwarn com.google.**
+
+# Keep all classes in the app package
+-keep class com.example.jeevaan.** { *; }

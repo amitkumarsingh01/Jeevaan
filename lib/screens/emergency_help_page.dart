@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/emergency_contact.dart';
 import '../database/database_helper.dart';
 import '../services/sms_service.dart';
+import '../services/voice_service.dart';
 import 'emergency_contact_page.dart';
 
 class EmergencyHelpPage extends StatefulWidget {
@@ -14,11 +15,53 @@ class EmergencyHelpPage extends StatefulWidget {
 class _EmergencyHelpPageState extends State<EmergencyHelpPage> {
   final DatabaseHelper _dbHelper = DatabaseHelper();
   EmergencyContact? _primaryContact;
+  final VoiceService _voiceService = VoiceService();
+  bool _isVoiceCommandActive = false;
 
   @override
   void initState() {
     super.initState();
     _loadPrimaryContact();
+    _initializeVoiceService();
+  }
+
+  Future<void> _initializeVoiceService() async {
+    await _voiceService.initialize();
+    // Start continuous listening for emergency commands
+    _startEmergencyVoiceListener();
+  }
+
+  void _startEmergencyVoiceListener() {
+    _voiceService.startListening(
+      onResult: (command) {
+        if (VoiceService.isEmergencyCommand(command)) {
+          _makeEmergencyCall();
+        }
+        // Continue listening for emergency commands
+        if (mounted) {
+          _startEmergencyVoiceListener();
+        }
+      },
+      onError: () {
+        // Retry after error
+        if (mounted) {
+          Future.delayed(const Duration(seconds: 2), () {
+            if (mounted) {
+              _startEmergencyVoiceListener();
+            }
+          });
+        }
+      },
+    );
+    setState(() {
+      _isVoiceCommandActive = true;
+    });
+  }
+
+  @override
+  void dispose() {
+    _voiceService.stopListening();
+    super.dispose();
   }
 
   Future<void> _loadPrimaryContact() async {
@@ -170,6 +213,23 @@ class _EmergencyHelpPageState extends State<EmergencyHelpPage> {
         backgroundColor: Colors.red[600],
         foregroundColor: Colors.white,
         actions: [
+          IconButton(
+            icon: Icon(
+              _isVoiceCommandActive ? Icons.mic : Icons.mic_none,
+              color: _isVoiceCommandActive ? Colors.yellow : Colors.white,
+            ),
+            tooltip: 'Voice Command Active - Say "Emergency" or "SOS"',
+            onPressed: () {
+              if (_isVoiceCommandActive) {
+                _voiceService.stopListening();
+                setState(() {
+                  _isVoiceCommandActive = false;
+                });
+              } else {
+                _startEmergencyVoiceListener();
+              }
+            },
+          ),
           IconButton(
             onPressed: () {
               Navigator.push(
@@ -333,6 +393,37 @@ class _EmergencyHelpPageState extends State<EmergencyHelpPage> {
                   ),
                   const SizedBox(height: 40),
                 ],
+                
+                // Voice Command Info
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.yellow[50],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.yellow[300]!),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.mic,
+                        color: Colors.yellow[700],
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _isVoiceCommandActive
+                              ? 'Voice command active! Say "Emergency", "SOS", or "Help Me" to call'
+                              : 'Tap microphone icon to activate voice commands',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.yellow[900],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
                 
                 // Emergency Buttons
                 if (_primaryContact != null) ...[

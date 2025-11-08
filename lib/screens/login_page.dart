@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'signup_page.dart';
 import '../main_navigation.dart';
 import '../services/auth_service.dart';
+import '../widgets/voice_input_button.dart';
+import '../services/voice_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -16,12 +18,32 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _rememberMe = false;
+  final VoiceService _voiceService = VoiceService();
+  bool _isVoiceCommandActive = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeVoiceService();
+  }
+
+  Future<void> _initializeVoiceService() async {
+    await _voiceService.initialize();
+  }
 
   @override
   void dispose() {
+    _voiceService.stopListening();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _handleVoiceCommand(String command) {
+    final action = VoiceService.processLoginCommand(command);
+    if (action == 'login' && _formKey.currentState!.validate()) {
+      _login();
+    }
   }
 
   void _login() async {
@@ -130,6 +152,14 @@ class _LoginPageState extends State<LoginPage> {
                   decoration: InputDecoration(
                     labelText: 'Email',
                     prefixIcon: const Icon(Icons.email),
+                    suffixIcon: VoiceInputButton(
+                      onResult: (text) {
+                        setState(() {
+                          _emailController.text = text;
+                        });
+                      },
+                      color: Colors.blue,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -155,15 +185,28 @@ class _LoginPageState extends State<LoginPage> {
                   decoration: InputDecoration(
                     labelText: 'Password',
                     prefixIcon: const Icon(Icons.lock),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _isPasswordVisible = !_isPasswordVisible;
-                        });
-                      },
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        VoiceInputButton(
+                          onResult: (text) {
+                            setState(() {
+                              _passwordController.text = text;
+                            });
+                          },
+                          color: Colors.blue,
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _isPasswordVisible = !_isPasswordVisible;
+                            });
+                          },
+                        ),
+                      ],
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -197,7 +240,54 @@ class _LoginPageState extends State<LoginPage> {
                     const Text('Remember Me'),
                   ],
                 ),
-                const SizedBox(height: 30),
+                const SizedBox(height: 20),
+                
+                // Voice Command Button
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        _isVoiceCommandActive ? Icons.mic : Icons.mic_none,
+                        color: _isVoiceCommandActive ? Colors.red : Colors.blue,
+                      ),
+                      onPressed: () async {
+                        if (!_isVoiceCommandActive) {
+                          setState(() {
+                            _isVoiceCommandActive = true;
+                          });
+                          await _voiceService.startListening(
+                            onResult: (command) {
+                              setState(() {
+                                _isVoiceCommandActive = false;
+                              });
+                              _handleVoiceCommand(command);
+                            },
+                            onError: () {
+                              setState(() {
+                                _isVoiceCommandActive = false;
+                              });
+                            },
+                          );
+                        } else {
+                          await _voiceService.stopListening();
+                          setState(() {
+                            _isVoiceCommandActive = false;
+                          });
+                        }
+                      },
+                    ),
+                    Text(
+                      _isVoiceCommandActive ? 'Listening... Say "Login"' : 'Tap to use voice command',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.blue[600],
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
                 
                 // Login Button
                 ElevatedButton(

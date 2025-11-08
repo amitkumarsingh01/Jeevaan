@@ -5,6 +5,6 @@
     <include domain="sharedpref" path="." />
     
     <!-- Exclude sensitive files -->
-    <exclude domain="database" path="temp/" />
-    <exclude domain="sharedpref" path="debug/" />
+    <exclude domain="database" path="temp" />
+    <exclude domain="sharedpref" path="debug" />
 </full-backup-content>

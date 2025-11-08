@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/medication.dart';
 import '../database/database_helper.dart';
 import '../services/medication_reminder_service.dart';
+import '../widgets/voice_input_button.dart';
 
 class MedicationManagementPage extends StatefulWidget {
   const MedicationManagementPage({super.key});
@@ -21,10 +22,26 @@ class _MedicationManagementPageState extends State<MedicationManagementPage> {
   }
 
   Future<void> _loadMedications() async {
-    final medications = await _dbHelper.getAllMedications();
-    setState(() {
-      _medications = medications;
-    });
+    try {
+      setState(() {
+        // Show loading state if needed
+      });
+      final medications = await _dbHelper.getAllMedications();
+      print('Loaded ${medications.length} medications');
+      setState(() {
+        _medications = medications;
+      });
+    } catch (e) {
+      print('Error loading medications: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading medications: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _showAddMedicationDialog() {
@@ -32,10 +49,33 @@ class _MedicationManagementPageState extends State<MedicationManagementPage> {
       context: context,
       builder: (context) => _MedicationDialog(
         onSave: (medication) async {
-          final id = await _dbHelper.insertMedication(medication);
-          final newMedication = medication.copyWith(id: id);
-          await MedicationReminderService.scheduleMedicationReminders(newMedication);
-          _loadMedications();
+          try {
+            print('Saving medication: ${medication.name}');
+            final id = await _dbHelper.insertMedication(medication);
+            print('Medication saved with ID: $id');
+            final newMedication = medication.copyWith(id: id);
+            await MedicationReminderService.scheduleMedicationReminders(newMedication);
+            if (mounted) {
+              Navigator.pop(context);
+              _loadMedications();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Medication added successfully!'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            }
+          } catch (e) {
+            print('Error saving medication: $e');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Error saving medication: $e'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          }
         },
       ),
     );
@@ -47,9 +87,31 @@ class _MedicationManagementPageState extends State<MedicationManagementPage> {
       builder: (context) => _MedicationDialog(
         medication: medication,
         onSave: (updatedMedication) async {
-          await _dbHelper.updateMedication(updatedMedication);
-          await MedicationReminderService.scheduleMedicationReminders(updatedMedication);
-          _loadMedications();
+          try {
+            print('Updating medication: ${updatedMedication.name}');
+            await _dbHelper.updateMedication(updatedMedication);
+            await MedicationReminderService.scheduleMedicationReminders(updatedMedication);
+            if (mounted) {
+              Navigator.pop(context);
+              _loadMedications();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Medication updated successfully!'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            }
+          } catch (e) {
+            print('Error updating medication: $e');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Error updating medication: $e'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          }
         },
       ),
     );
@@ -81,16 +143,43 @@ class _MedicationManagementPageState extends State<MedicationManagementPage> {
   }
 
   void _toggleMedicationStatus(Medication medication) async {
-    final newStatus = !medication.isActive;
-    await _dbHelper.toggleMedicationStatus(medication.id!, newStatus);
-    
-    if (newStatus) {
-      await MedicationReminderService.scheduleMedicationReminders(medication);
-    } else {
-      await MedicationReminderService.cancelMedicationReminders(medication.id!);
+    try {
+      final newStatus = !medication.isActive;
+      print('Toggling medication ${medication.name} to ${newStatus ? "active" : "inactive"}');
+      
+      await _dbHelper.toggleMedicationStatus(medication.id!, newStatus);
+      
+      // Create updated medication with new status
+      final updatedMedication = medication.copyWith(isActive: newStatus);
+      
+      if (newStatus) {
+        await MedicationReminderService.scheduleMedicationReminders(updatedMedication);
+      } else {
+        await MedicationReminderService.cancelMedicationReminders(medication.id!);
+      }
+      
+      // Reload medications to reflect the change
+      await _loadMedications();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Medication ${newStatus ? "enabled" : "disabled"} successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error toggling medication status: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating medication: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
-    
-    _loadMedications();
   }
 
   void _markAsTaken(Medication medication) async {
@@ -303,10 +392,10 @@ class _MedicationManagementPageState extends State<MedicationManagementPage> {
                                     value: 'edit',
                                     child: const Text('Edit'),
                                   ),
-                                  PopupMenuItem(
-                                    value: 'toggle',
-                                    child: Text(medication.isActive ? 'Disable' : 'Enable'),
-                                  ),
+                                  // PopupMenuItem(
+                                  //   value: 'toggle',
+                                  //   child: Text(medication.isActive ? 'Disable' : 'Enable'),
+                                  // ),
                                   PopupMenuItem(
                                     value: 'delete',
                                     child: const Text('Delete'),
@@ -389,7 +478,26 @@ class _MedicationDialogState extends State<_MedicationDialog> {
   }
 
   void _saveMedication() {
-    if (_formKey.currentState!.validate() && _selectedDays.isNotEmpty && _selectedTimes.isNotEmpty) {
+    if (_formKey.currentState!.validate()) {
+      if (_selectedDays.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select at least one day'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      if (_selectedTimes.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select at least one reminder time'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      
       final medication = Medication(
         id: widget.medication?.id,
         name: _nameController.text.trim(),
@@ -403,8 +511,8 @@ class _MedicationDialogState extends State<_MedicationDialog> {
         streakCount: widget.medication?.streakCount ?? 0,
       );
       
+      // Don't close dialog here - let onSave callback handle it
       widget.onSave(medication);
-      Navigator.pop(context);
     }
   }
 
@@ -420,9 +528,17 @@ class _MedicationDialogState extends State<_MedicationDialog> {
             children: [
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Medication Name',
-                  prefixIcon: Icon(Icons.medication),
+                  prefixIcon: const Icon(Icons.medication),
+                  suffixIcon: VoiceInputButton(
+                    onResult: (text) {
+                      setState(() {
+                        _nameController.text = text;
+                      });
+                    },
+                    color: Colors.blue,
+                  ),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -434,9 +550,17 @@ class _MedicationDialogState extends State<_MedicationDialog> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _dosageController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Dosage',
-                  prefixIcon: Icon(Icons.straighten),
+                  prefixIcon: const Icon(Icons.straighten),
+                  suffixIcon: VoiceInputButton(
+                    onResult: (text) {
+                      setState(() {
+                        _dosageController.text = text;
+                      });
+                    },
+                    color: Colors.blue,
+                  ),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -448,9 +572,17 @@ class _MedicationDialogState extends State<_MedicationDialog> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _instructionsController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Instructions',
-                  prefixIcon: Icon(Icons.info),
+                  prefixIcon: const Icon(Icons.info),
+                  suffixIcon: VoiceInputButton(
+                    onResult: (text) {
+                      setState(() {
+                        _instructionsController.text = text;
+                      });
+                    },
+                    color: Colors.blue,
+                  ),
                 ),
                 maxLines: 2,
                 validator: (value) {
