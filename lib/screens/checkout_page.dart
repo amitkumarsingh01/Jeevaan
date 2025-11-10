@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/medicine.dart';
 import '../services/medicine_service.dart';
+import '../services/auth_service.dart';
+import '../database/database_helper.dart';
 
 class CheckoutPage extends StatefulWidget {
   final List<Map<String, dynamic>> cart;
@@ -26,6 +28,56 @@ class _CheckoutPageState extends State<CheckoutPage> {
   
   String _paymentMethod = 'Cash on Delivery';
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserProfile();
+  }
+
+  Future<void> _loadUserProfile() async {
+    try {
+      final currentUser = AuthService.currentUser;
+      if (currentUser != null) {
+        // Always use logged-in user's email (cannot be changed)
+        _emailController.text = currentUser.email;
+        print('Checkout page - Loaded user email: ${currentUser.email}');
+        
+        // Try to load from user profile
+        final dbHelper = DatabaseHelper();
+        final profiles = await dbHelper.getAllUserProfiles();
+        if (profiles.isNotEmpty) {
+          // Try to find profile matching current user email
+          final matchingProfile = profiles.firstWhere(
+            (p) => p.email.toLowerCase().trim() == currentUser.email.toLowerCase().trim(),
+            orElse: () => profiles.first,
+          );
+          
+          setState(() {
+            _nameController.text = matchingProfile.name;
+            _phoneController.text = matchingProfile.phoneNumber;
+            // Always keep the logged-in user's email
+            _emailController.text = currentUser.email;
+            _addressController.text = matchingProfile.address;
+          });
+          
+          print('Checkout page - Loaded profile: ${matchingProfile.name}, email: ${matchingProfile.email}');
+        } else {
+          // If no profile, at least set the email
+          setState(() {
+            _emailController.text = currentUser.email;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading user profile: $e');
+      // At least set email from current user
+      final currentUser = AuthService.currentUser;
+      if (currentUser != null) {
+        _emailController.text = currentUser.email;
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -70,16 +122,25 @@ class _CheckoutPageState extends State<CheckoutPage> {
           return;
         }
 
+        // Ensure email matches logged-in user
+        final currentUser = AuthService.currentUser;
+        final orderEmail = currentUser?.email ?? _emailController.text.trim();
+        
+        print('Placing order with email: $orderEmail');
+        print('Logged-in user email: ${currentUser?.email}');
+        
         // Place order
         final orderNumber = await MedicineService.placeOrder(
           customerName: _nameController.text.trim(),
           customerPhone: _phoneController.text.trim(),
-          customerEmail: _emailController.text.trim(),
+          customerEmail: orderEmail, // Always use logged-in user's email
           deliveryAddress: _addressController.text.trim(),
           cartItems: widget.cart,
           notes: _notesController.text.trim(),
           paymentMethod: _paymentMethod,
         );
+        
+        print('Order placed successfully: $orderNumber');
 
         setState(() {
           _isLoading = false;
@@ -302,12 +363,23 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.emailAddress,
+                enabled: false, // Make it read-only to ensure it matches logged-in user
+                style: TextStyle(color: Colors.grey[600]),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'Please enter your email';
                   }
                   return null;
                 },
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Email is set from your account',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                  fontStyle: FontStyle.italic,
+                ),
               ),
               const SizedBox(height: 16),
 

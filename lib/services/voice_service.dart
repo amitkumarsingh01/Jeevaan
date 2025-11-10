@@ -157,6 +157,31 @@ class VoiceService {
            lowerCommand.contains('emergency call');
   }
 
+  /// Process voice command for Emergency Call
+  static bool isEmergencyCallCommand(String command) {
+    final lowerCommand = command.toLowerCase().trim();
+    return lowerCommand.contains('call') ||
+           lowerCommand.contains('phone') ||
+           lowerCommand.contains('emergency call') ||
+           lowerCommand.contains('call emergency') ||
+           lowerCommand.contains('make a call') ||
+           (isEmergencyCommand(command) && !isEmergencySmsCommand(command));
+  }
+
+  /// Process voice command for Emergency SMS
+  static bool isEmergencySmsCommand(String command) {
+    final lowerCommand = command.toLowerCase().trim();
+    return lowerCommand.contains('send sms') ||
+           lowerCommand.contains('send message') ||
+           lowerCommand.contains('text') ||
+           lowerCommand.contains('message') ||
+           lowerCommand.contains('send text') ||
+           lowerCommand.contains('sms') ||
+           lowerCommand.contains('send location') ||
+           lowerCommand.contains('text emergency') ||
+           lowerCommand.contains('message emergency');
+  }
+
   /// Process voice command for login actions
   static String? processLoginCommand(String command) {
     final lowerCommand = command.toLowerCase().trim();

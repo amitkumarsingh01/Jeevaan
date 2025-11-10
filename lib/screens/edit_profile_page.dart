@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/user_profile.dart';
 import '../database/database_helper.dart';
 import '../services/language_service.dart';
+import '../services/notification_service.dart';
 import '../widgets/voice_input_button.dart';
 
 class EditProfilePage extends StatefulWidget {
@@ -452,6 +453,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
         await _dbHelper.insertUserProfile(profile);
       } else {
         await _dbHelper.updateUserProfile(profile);
+        
+        // Send notification and email for profile updates
+        await NotificationService.notifyProfileUpdated();
       }
 
       if (mounted) {

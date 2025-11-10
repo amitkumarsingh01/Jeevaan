@@ -1,6 +1,7 @@
 import '../models/medicine.dart';
 import '../models/order.dart';
 import '../database/database_helper.dart';
+import 'notification_service.dart';
 
 class MedicineService {
   static final DatabaseHelper _dbHelper = DatabaseHelper();
@@ -112,7 +113,9 @@ class MedicineService {
       );
 
       // Insert order
+      print('Inserting order: $orderNumber for email: $customerEmail');
       final orderId = await _dbHelper.insertOrder(order);
+      print('Order inserted with ID: $orderId');
 
       // Insert order items and update stock
       for (final item in cartItems) {
@@ -136,6 +139,30 @@ class MedicineService {
         }
       }
 
+      // Get order items for email
+      final orderItemsForEmail = <Map<String, dynamic>>[];
+      for (final item in cartItems) {
+        final medicine = await getMedicineById(item['medicineId']);
+        if (medicine != null) {
+          orderItemsForEmail.add({
+            'medicine': medicine,
+            'medicineName': medicine.name,
+            'quantity': item['quantity'],
+            'price': medicine.price,
+          });
+        }
+      }
+
+      // Send notification and email
+      await NotificationService.notifyOrderPlaced(
+        orderNumber: orderNumber,
+        totalAmount: totalAmount,
+        deliveryAddress: deliveryAddress,
+        customerName: customerName,
+        customerEmail: customerEmail,
+        orderItems: orderItemsForEmail,
+      );
+
       return orderNumber;
     } catch (e) {
       throw Exception('Failed to place order: $e');
@@ -145,18 +172,24 @@ class MedicineService {
   // Get orders by customer email
   static Future<List<Order>> getCustomerOrders(String email) async {
     try {
+      print('Fetching orders for email: $email');
       final orders = await _dbHelper.getOrdersByCustomer(email);
+      print('Found ${orders.length} orders for email: $email');
       
-      // Load order items for each order
+      // Load order items for each order and create new Order objects with items
+      final ordersWithItems = <Order>[];
       for (final order in orders) {
         final items = await _dbHelper.getOrderItemsByOrderId(order.id!);
-        // Note: We can't modify the order object directly, so we'll handle this in the UI
-        // Items are loaded but not used here as Order model doesn't have items field
         print('Loaded ${items.length} items for order ${order.orderNumber}');
+        
+        // Create new order with items
+        final orderWithItems = order.copyWith(items: items);
+        ordersWithItems.add(orderWithItems);
       }
       
-      return orders;
+      return ordersWithItems;
     } catch (e) {
+      print('Error getting customer orders: $e');
       throw Exception('Failed to get customer orders: $e');
     }
   }
@@ -182,6 +215,10 @@ class MedicineService {
   // Cancel order
   static Future<void> cancelOrder(int orderId) async {
     try {
+      // Get order before cancelling
+      final order = await getOrderById(orderId);
+      if (order == null) throw Exception('Order not found');
+      
       // Get order items to restore stock
       final orderItems = await getOrderItems(orderId);
       
@@ -196,6 +233,12 @@ class MedicineService {
       
       // Update order status
       await _dbHelper.updateOrderStatus(orderId, OrderStatus.cancelled);
+      
+      // Send notification and email
+      await NotificationService.notifyOrderStatusUpdate(
+        orderNumber: order.orderNumber,
+        status: 'Cancelled',
+      );
     } catch (e) {
       throw Exception('Failed to cancel order: $e');
     }
@@ -204,7 +247,16 @@ class MedicineService {
   // Update order status (for admin)
   static Future<void> updateOrderStatus(int orderId, OrderStatus status) async {
     try {
+      final order = await getOrderById(orderId);
+      if (order == null) throw Exception('Order not found');
+      
       await _dbHelper.updateOrderStatus(orderId, status);
+      
+      // Send notification and email
+      await NotificationService.notifyOrderStatusUpdate(
+        orderNumber: order.orderNumber,
+        status: status.toString().split('.').last,
+      );
     } catch (e) {
       throw Exception('Failed to update order status: $e');
     }
@@ -222,7 +274,17 @@ class MedicineService {
   // Add tracking information
   static Future<void> addTrackingInfo(int orderId, String trackingNumber, DateTime? deliveryDate) async {
     try {
+      final order = await getOrderById(orderId);
+      if (order == null) throw Exception('Order not found');
+      
       await _dbHelper.updateOrderTracking(orderId, trackingNumber, deliveryDate);
+      
+      // Send notification and email
+      await NotificationService.notifyOrderStatusUpdate(
+        orderNumber: order.orderNumber,
+        status: 'Shipped',
+        trackingNumber: trackingNumber,
+      );
     } catch (e) {
       throw Exception('Failed to add tracking info: $e');
     }

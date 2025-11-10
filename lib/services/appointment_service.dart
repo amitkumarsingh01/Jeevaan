@@ -1,8 +1,11 @@
 import '../models/appointment.dart';
 import '../database/database_helper.dart';
 import 'medication_reminder_service.dart';
+import 'email_service.dart';
+import 'notification_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
+import 'package:intl/intl.dart';
 
 class AppointmentService {
   static final DatabaseHelper _dbHelper = DatabaseHelper();
@@ -15,6 +18,17 @@ class AppointmentService {
       
       // Schedule reminder notification
       await _scheduleAppointmentReminder(appointment);
+      
+      // Send notification and email
+      final doctorName = await _getDoctorName(appointment.doctorId);
+      final dateFormat = DateFormat('MMMM dd, yyyy');
+      final dateStr = dateFormat.format(appointment.appointmentDate);
+      
+      await NotificationService.notifyAppointmentBooked(
+        doctorName: doctorName,
+        appointmentDate: dateStr,
+        appointmentTime: appointment.appointmentTime,
+      );
       
       return appointmentId;
     } catch (e) {
@@ -57,16 +71,34 @@ class AppointmentService {
         );
 
         final FlutterLocalNotificationsPlugin notifications = FlutterLocalNotificationsPlugin();
+        final doctorName = await _getDoctorName(appointment.doctorId);
+        
         await notifications.zonedSchedule(
           appointment.id!,
           'Appointment Reminder',
-          'You have an appointment with Dr. ${await _getDoctorName(appointment.doctorId)} tomorrow at ${appointment.appointmentTime}',
+          'You have an appointment with Dr. $doctorName tomorrow at ${appointment.appointmentTime}',
           tz.TZDateTime.from(reminderTime, tz.getLocation('Asia/Kolkata')),
           notificationDetails,
           payload: 'appointment_${appointment.id}',
           uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
           androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         );
+        
+        // Send email reminder if configured
+        try {
+          final dateFormat = DateFormat('MMMM dd, yyyy');
+          final dateStr = dateFormat.format(appointment.appointmentDate);
+          
+          await EmailService.sendAppointmentReminderEmail(
+            doctorName: doctorName,
+            appointmentDate: dateStr,
+            appointmentTime: appointment.appointmentTime,
+            reason: appointment.reason ?? 'General consultation',
+          );
+        } catch (e) {
+          print('Error sending appointment reminder email: $e');
+          // Don't fail notification if email fails
+        }
       }
     } catch (e) {
       print('Error scheduling appointment reminder: $e');
@@ -131,11 +163,25 @@ class AppointmentService {
   // Cancel appointment
   static Future<void> cancelAppointment(int appointmentId) async {
     try {
+      // Get appointment details before cancelling
+      final appointments = await _dbHelper.getAllAppointments();
+      final appointment = appointments.firstWhere((apt) => apt.id == appointmentId);
+      final doctorName = await _getDoctorName(appointment.doctorId);
+      final dateFormat = DateFormat('MMMM dd, yyyy');
+      final dateStr = dateFormat.format(appointment.appointmentDate);
+      
       await _dbHelper.updateAppointmentStatus(appointmentId, AppointmentStatus.cancelled);
       
       // Cancel any scheduled reminders
       final FlutterLocalNotificationsPlugin notifications = FlutterLocalNotificationsPlugin();
       await notifications.cancel(appointmentId);
+      
+      // Send notification and email
+      await NotificationService.notifyAppointmentCancelled(
+        doctorName: doctorName,
+        appointmentDate: dateStr,
+        appointmentTime: appointment.appointmentTime,
+      );
     } catch (e) {
       throw Exception('Failed to cancel appointment: $e');
     }
@@ -172,6 +218,9 @@ class AppointmentService {
       // Get current appointment
       final appointments = await _dbHelper.getAllAppointments();
       final appointment = appointments.firstWhere((apt) => apt.id == appointmentId);
+      final doctorName = await _getDoctorName(appointment.doctorId);
+      final dateFormat = DateFormat('MMMM dd, yyyy');
+      final dateStr = dateFormat.format(appointment.appointmentDate);
       
       // Update appointment as completed
       final updatedAppointment = appointment.copyWith(
@@ -181,6 +230,12 @@ class AppointmentService {
       );
       
       await _dbHelper.updateAppointment(updatedAppointment);
+      
+      // Send notification and email
+      await NotificationService.notifyAppointmentCompleted(
+        doctorName: doctorName,
+        appointmentDate: dateStr,
+      );
     } catch (e) {
       throw Exception('Failed to complete appointment: $e');
     }
@@ -246,6 +301,22 @@ class AppointmentService {
         notificationDetails,
         payload: 'appointment_${appointment.id}',
       );
+      
+      // Send email reminder if configured
+      try {
+        final dateFormat = DateFormat('MMMM dd, yyyy');
+        final dateStr = dateFormat.format(appointment.appointmentDate);
+        
+        await EmailService.sendAppointmentReminderEmail(
+          doctorName: doctorName,
+          appointmentDate: dateStr,
+          appointmentTime: appointment.appointmentTime,
+          reason: appointment.reason ?? 'General consultation',
+        );
+      } catch (e) {
+        print('Error sending appointment reminder email: $e');
+        // Don't fail notification if email fails
+      }
     } catch (e) {
       print('Error sending appointment reminder notification: $e');
     }

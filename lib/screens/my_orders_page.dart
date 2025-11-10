@@ -23,6 +23,12 @@ class _MyOrdersPageState extends State<MyOrdersPage>
     _loadOrders();
   }
 
+
+  // Reload orders when page becomes visible
+  void refreshOrders() {
+    _loadOrders();
+  }
+
   @override
   void dispose() {
     _tabController.dispose();
@@ -37,17 +43,39 @@ class _MyOrdersPageState extends State<MyOrdersPage>
     try {
       final currentUser = AuthService.currentUser;
       if (currentUser != null) {
+        print('Loading orders for user: ${currentUser.email}');
         final orders = await MedicineService.getCustomerOrders(currentUser.email);
+        print('Loaded ${orders.length} orders for display');
         setState(() {
           _orders = orders;
           _isLoading = false;
         });
+        
+        if (orders.isEmpty && mounted) {
+          // Show helpful message if no orders found
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('No orders found for ${currentUser.email}. Make sure the email in checkout matches your account email.'),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
       } else {
         setState(() {
           _isLoading = false;
         });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please log in to view your orders'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } catch (e) {
+      print('Error in _loadOrders: $e');
       setState(() {
         _isLoading = false;
       });

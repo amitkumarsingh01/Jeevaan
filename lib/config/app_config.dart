@@ -43,6 +43,14 @@ class AppConfig {
   static const String databaseName = 'jeevaan.db';
   static const int databaseVersion = 1;
   
+  // Email/SMTP settings
+  // Note: Update these in lib/services/email_service.dart
+  // For Gmail: Use App Password (not regular password)
+  // Enable 2FA and generate App Password from Google Account settings
+  static const String smtpHost = 'smtp.gmail.com';
+  static const int smtpPort = 587;
+  static const bool smtpSecure = false; // Use TLS
+  
   // Validation methods
   static bool isApiKeyConfigured() {
     return googleMapsApiKey != 'YOUR_GOOGLE_MAPS_API_KEY_HERE' &&

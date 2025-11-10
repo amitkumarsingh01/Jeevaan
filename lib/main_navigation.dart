@@ -293,7 +293,10 @@ class _MainNavigationState extends State<MainNavigation> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const MyOrdersPage()),
-                );
+                ).then((_) {
+                  // Refresh orders when returning from order page
+                  // This ensures new orders appear if user navigates back
+                });
               },
             ),
             ListTile(

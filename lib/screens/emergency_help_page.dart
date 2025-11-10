@@ -3,6 +3,7 @@ import '../models/emergency_contact.dart';
 import '../database/database_helper.dart';
 import '../services/sms_service.dart';
 import '../services/voice_service.dart';
+import '../services/notification_service.dart';
 import 'emergency_contact_page.dart';
 
 class EmergencyHelpPage extends StatefulWidget {
@@ -34,7 +35,12 @@ class _EmergencyHelpPageState extends State<EmergencyHelpPage> {
   void _startEmergencyVoiceListener() {
     _voiceService.startListening(
       onResult: (command) {
-        if (VoiceService.isEmergencyCommand(command)) {
+        // Check for SMS command first (more specific)
+        if (VoiceService.isEmergencySmsCommand(command)) {
+          _sendEmergencySms();
+        } 
+        // Then check for call command
+        else if (VoiceService.isEmergencyCallCommand(command)) {
           _makeEmergencyCall();
         }
         // Continue listening for emergency commands
@@ -108,6 +114,12 @@ class _EmergencyHelpPageState extends State<EmergencyHelpPage> {
         Navigator.of(context).pop();
         
         if (callInitiated) {
+          // Send notification and email
+          await NotificationService.notifyEmergencyAlert(
+            contactName: _primaryContact!.name,
+            contactPhone: _primaryContact!.phoneNumber,
+          );
+          
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Emergency call initiated!'),
@@ -175,6 +187,12 @@ class _EmergencyHelpPageState extends State<EmergencyHelpPage> {
         Navigator.of(context).pop();
         
         if (smsSent) {
+          // Send notification and email
+          await NotificationService.notifyEmergencyAlert(
+            contactName: _primaryContact!.name,
+            contactPhone: _primaryContact!.phoneNumber,
+          );
+          
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Emergency SMS sent with location!'),
@@ -218,7 +236,9 @@ class _EmergencyHelpPageState extends State<EmergencyHelpPage> {
               _isVoiceCommandActive ? Icons.mic : Icons.mic_none,
               color: _isVoiceCommandActive ? Colors.yellow : Colors.white,
             ),
-            tooltip: 'Voice Command Active - Say "Emergency" or "SOS"',
+            tooltip: _isVoiceCommandActive 
+                ? 'Voice Active - Say "Call" or "Send SMS"'
+                : 'Activate Voice Commands',
             onPressed: () {
               if (_isVoiceCommandActive) {
                 _voiceService.stopListening();
@@ -412,7 +432,7 @@ class _EmergencyHelpPageState extends State<EmergencyHelpPage> {
                       Expanded(
                         child: Text(
                           _isVoiceCommandActive
-                              ? 'Voice command active! Say "Emergency", "SOS", or "Help Me" to call'
+                              ? 'Voice active! Say "Call" or "Phone" to call, "Send SMS" or "Text" to send message'
                               : 'Tap microphone icon to activate voice commands',
                           style: TextStyle(
                             fontSize: 14,

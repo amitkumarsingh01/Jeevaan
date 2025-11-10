@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/medication.dart';
 import '../database/database_helper.dart';
 import '../services/medication_reminder_service.dart';
+import '../services/notification_service.dart';
 import '../widgets/voice_input_button.dart';
 
 class MedicationManagementPage extends StatefulWidget {
@@ -55,6 +56,12 @@ class _MedicationManagementPageState extends State<MedicationManagementPage> {
             print('Medication saved with ID: $id');
             final newMedication = medication.copyWith(id: id);
             await MedicationReminderService.scheduleMedicationReminders(newMedication);
+            
+            // Send notification and email
+            await NotificationService.notifyMedicationAdded(
+              medicationName: medication.name,
+            );
+            
             if (mounted) {
               Navigator.pop(context);
               _loadMedications();
@@ -68,10 +75,17 @@ class _MedicationManagementPageState extends State<MedicationManagementPage> {
           } catch (e) {
             print('Error saving medication: $e');
             if (mounted) {
+              String errorMessage = 'Error saving medication';
+              if (e.toString().contains('exact_alarms_not_permitted')) {
+                errorMessage = 'Medication saved, but reminder permission needed. Please enable "Schedule exact alarms" in Settings.';
+              } else {
+                errorMessage = 'Error saving medication: ${e.toString().split(':').first}';
+              }
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Error saving medication: $e'),
-                  backgroundColor: Colors.red,
+                  content: Text(errorMessage),
+                  backgroundColor: Colors.orange,
+                  duration: const Duration(seconds: 4),
                 ),
               );
             }
@@ -91,6 +105,12 @@ class _MedicationManagementPageState extends State<MedicationManagementPage> {
             print('Updating medication: ${updatedMedication.name}');
             await _dbHelper.updateMedication(updatedMedication);
             await MedicationReminderService.scheduleMedicationReminders(updatedMedication);
+            
+            // Send notification and email
+            await NotificationService.notifyMedicationUpdated(
+              medicationName: updatedMedication.name,
+            );
+            
             if (mounted) {
               Navigator.pop(context);
               _loadMedications();
@@ -104,10 +124,17 @@ class _MedicationManagementPageState extends State<MedicationManagementPage> {
           } catch (e) {
             print('Error updating medication: $e');
             if (mounted) {
+              String errorMessage = 'Error updating medication';
+              if (e.toString().contains('exact_alarms_not_permitted')) {
+                errorMessage = 'Medication updated, but reminder permission needed. Please enable "Schedule exact alarms" in Settings.';
+              } else {
+                errorMessage = 'Error updating medication: ${e.toString().split(':').first}';
+              }
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Error updating medication: $e'),
-                  backgroundColor: Colors.red,
+                  content: Text(errorMessage),
+                  backgroundColor: Colors.orange,
+                  duration: const Duration(seconds: 4),
                 ),
               );
             }
@@ -122,7 +149,7 @@ class _MedicationManagementPageState extends State<MedicationManagementPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Medication'),
-        content: Text('Are you sure you want to delete ${medication.name}?'),
+        content: Text('Are you sure you want to delete "${medication.name}"?\n\nThis action cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -131,9 +158,55 @@ class _MedicationManagementPageState extends State<MedicationManagementPage> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              await MedicationReminderService.cancelMedicationReminders(medication.id!);
-              await _dbHelper.deleteMedication(medication.id!);
-              _loadMedications();
+              
+              try {
+                final medicationName = medication.name;
+                
+                // Cancel reminders first
+                await MedicationReminderService.cancelMedicationReminders(medication.id!);
+                
+                // Delete from database
+                final result = await _dbHelper.deleteMedication(medication.id!);
+                
+                if (result > 0) {
+                  // Send notification and email
+                  await NotificationService.notifyMedicationDeleted(
+                    medicationName: medicationName,
+                  );
+                  
+                  // Reload medications
+                  await _loadMedications();
+                  
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('$medicationName deleted successfully'),
+                        backgroundColor: Colors.green,
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                } else {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Failed to delete medication. Please try again.'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              } catch (e) {
+                print('Error deleting medication: $e');
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error deleting medication: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
             },
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
@@ -184,7 +257,12 @@ class _MedicationManagementPageState extends State<MedicationManagementPage> {
 
   void _markAsTaken(Medication medication) async {
     await _dbHelper.markMedicationTaken(medication.id!);
-    await MedicationReminderService.showMedicationTakenDialog(medication);
+    
+    // Send notification and email
+    await NotificationService.notifyMedicationTaken(
+      medicationName: medication.name,
+    );
+    
     _loadMedications();
   }
 

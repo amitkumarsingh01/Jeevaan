@@ -26,6 +26,10 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     
+    <!-- Exact alarm permission - Required for medication reminders on Android 12+ -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    
     <!-- Microphone permission - Required for voice recognition -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     

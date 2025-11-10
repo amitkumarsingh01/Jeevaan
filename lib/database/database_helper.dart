@@ -931,8 +931,16 @@ class DatabaseHelper {
   
   // Insert a new order
   Future<int> insertOrder(Order order) async {
-    final db = await database;
-    return await db.insert('orders', order.toMap());
+    try {
+      final db = await database;
+      print('Inserting order into database: ${order.orderNumber}, email: ${order.customerEmail}');
+      final id = await db.insert('orders', order.toMap());
+      print('Order inserted successfully with ID: $id');
+      return id;
+    } catch (e) {
+      print('Error inserting order: $e');
+      rethrow;
+    }
   }
 
   // Insert order item
@@ -954,19 +962,43 @@ class DatabaseHelper {
     });
   }
 
-  // Get orders by customer email
+  // Get orders by customer email (case-insensitive)
   Future<List<Order>> getOrdersByCustomer(String email) async {
-    final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'orders',
-      where: 'customer_email = ?',
-      whereArgs: [email],
-      orderBy: 'order_date DESC',
-    );
+    try {
+      final db = await database;
+      final trimmedEmail = email.trim().toLowerCase();
+      print('Querying orders for email: $trimmedEmail (original: $email)');
+      
+      // Get all orders and filter by email (case-insensitive)
+      // SQLite doesn't support LOWER() in WHERE clauses easily, so we filter in Dart
+      final allOrders = await db.query('orders', orderBy: 'order_date DESC');
+      
+      print('Total orders in database: ${allOrders.length}');
+      for (final order in allOrders) {
+        print('  Order ${order['order_number']}: email = "${order['customer_email']}"');
+      }
+      
+      // Filter orders by email (case-insensitive, trimmed)
+      final maps = allOrders.where((order) {
+        final orderEmail = (order['customer_email'] as String? ?? '').trim().toLowerCase();
+        final matches = orderEmail == trimmedEmail;
+        if (matches) {
+          print('  ✓ Match found: Order ${order['order_number']}');
+        }
+        return matches;
+      }).toList();
 
-    return List.generate(maps.length, (i) {
-      return Order.fromMap(maps[i]);
-    });
+      print('Found ${maps.length} matching orders for email: $trimmedEmail');
+      
+      final orders = List.generate(maps.length, (i) {
+        return Order.fromMap(maps[i]);
+      });
+      
+      return orders;
+    } catch (e) {
+      print('Error getting orders by customer: $e');
+      rethrow;
+    }
   }
 
   // Get order by ID
