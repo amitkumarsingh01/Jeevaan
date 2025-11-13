@@ -18,6 +18,20 @@ class MedicationReminderService {
     // Initialize timezone
     tz.initializeTimeZones();
 
+    // Request notification permission (required for Android 13+)
+    try {
+      final status = await Permission.notification.status;
+      if (!status.isGranted) {
+        final requestResult = await Permission.notification.request();
+        if (!requestResult.isGranted) {
+          print('Notification permission not granted. Notifications may not work properly.');
+        }
+      }
+    } catch (e) {
+      print('Could not check/request notification permission: $e');
+      // Continue anyway - older Android versions don't need this permission
+    }
+
     // Initialize notifications
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -25,10 +39,17 @@ class MedicationReminderService {
     const InitializationSettings initializationSettings =
         InitializationSettings(android: initializationSettingsAndroid);
 
-    await _notifications.initialize(
+    final bool? initialized = await _notifications.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
+
+    if (initialized == null || !initialized) {
+      print('Warning: Notification plugin initialization returned false or null');
+    }
+
+    // Create notification channels (required for Android 8.0+)
+    await _createNotificationChannels();
 
     // Initialize TTS
     await _tts.setLanguage('en-US');
@@ -39,6 +60,58 @@ class MedicationReminderService {
     _isInitialized = true;
   }
 
+  /// Create notification channels for Android 8.0+ (Oreo)
+  static Future<void> _createNotificationChannels() async {
+    try {
+      // Medication reminders channel
+      const AndroidNotificationChannel medicationChannel = AndroidNotificationChannel(
+        'medication_reminders',
+        'Medication Reminders',
+        description: 'Reminders for taking medications',
+        importance: Importance.high,
+        playSound: true,
+        enableVibration: true,
+        showBadge: true,
+      );
+
+      // Medication confirmation channel
+      const AndroidNotificationChannel confirmationChannel = AndroidNotificationChannel(
+        'medication_confirmation',
+        'Medication Confirmation',
+        description: 'Confirmation when medications are taken',
+        importance: Importance.low,
+        playSound: false,
+        enableVibration: false,
+      );
+
+      // General notifications channel
+      const AndroidNotificationChannel generalChannel = AndroidNotificationChannel(
+        'general_notifications',
+        'General Notifications',
+        description: 'General notifications from Jeevaan app',
+        importance: Importance.high,
+        playSound: true,
+        enableVibration: true,
+      );
+
+      // Create channels (this is safe to call multiple times)
+      await _notifications
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(medicationChannel);
+      
+      await _notifications
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(confirmationChannel);
+      
+      await _notifications
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(generalChannel);
+    } catch (e) {
+      print('Error creating notification channels: $e');
+      // Continue anyway - channels might already exist
+    }
+  }
+
   static void _onNotificationTapped(NotificationResponse response) {
     // Handle notification tap - could open medication page
     print('Notification tapped: ${response.payload}');
@@ -46,6 +119,20 @@ class MedicationReminderService {
 
   static Future<void> scheduleMedicationReminders(Medication medication) async {
     await initialize();
+
+    // Request notification permission if not already granted (Android 13+)
+    try {
+      final status = await Permission.notification.status;
+      if (!status.isGranted) {
+        final requestResult = await Permission.notification.request();
+        if (!requestResult.isGranted) {
+          print('Warning: Notification permission not granted. Medication reminders may not work.');
+          // Don't return - still try to schedule, might work on older Android versions
+        }
+      }
+    } catch (e) {
+      print('Could not check/request notification permission: $e');
+    }
 
     // Request exact alarm permission if needed (Android 12+)
     // Note: On Android 12+, this permission may need to be granted through Settings
@@ -64,7 +151,7 @@ class MedicationReminderService {
     }
 
     // Cancel existing notifications for this medication
-    await cancelMedicationReminders(medication.id!);
+    await cancelMedicationReminders(medication.id!, medication: medication);
 
     // Schedule new notifications
     for (int dayOfWeek in medication.daysOfWeek) {
@@ -94,7 +181,8 @@ class MedicationReminderService {
     // Calculate next occurrence of this day and time
     DateTime scheduledDate = _getNextScheduledDate(dayOfWeek, hour, minute);
 
-    final notificationId = '${medication.id}_${dayOfWeek}_${reminderTimeMinutes}'.hashCode;
+    // Generate a positive notification ID (hashCode can be negative, so we use abs)
+    final notificationId = ('${medication.id}_${dayOfWeek}_${reminderTimeMinutes}'.hashCode).abs() % 2147483647;
 
     const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
       'medication_reminders',
@@ -208,15 +296,59 @@ class MedicationReminderService {
     return DateTime(targetDate.year, targetDate.month, targetDate.day, hour, minute);
   }
 
-  static Future<void> cancelMedicationReminders(int medicationId) async {
-    // Cancel all notifications for this medication
-    final List<PendingNotificationRequest> pendingNotifications = 
-        await _notifications.pendingNotificationRequests();
-    
-    for (var notification in pendingNotifications) {
-      if (notification.payload?.startsWith('medication_$medicationId') == true) {
-        await _notifications.cancel(notification.id);
+  static Future<void> cancelMedicationReminders(int medicationId, {Medication? medication}) async {
+    try {
+      // If we have the medication object, we can generate notification IDs directly
+      // This avoids the need to query pending notifications which can fail
+      if (medication != null) {
+        await _cancelMedicationRemindersByIds(medication);
+        return;
       }
+      
+      // Try to get pending notifications and cancel by payload
+      try {
+        final List<PendingNotificationRequest> pendingNotifications = 
+            await _notifications.pendingNotificationRequests();
+        
+        for (var notification in pendingNotifications) {
+          if (notification.payload?.startsWith('medication_$medicationId') == true) {
+            await _notifications.cancel(notification.id);
+          }
+        }
+      } catch (e) {
+        // If pendingNotificationRequests fails (e.g., GSON type parameter error),
+        // log the error but don't throw - the medication will still be deleted
+        print('Warning: Could not query pending notifications to cancel reminders: $e');
+        print('Medication reminders may still be scheduled, but medication will be deleted from database.');
+      }
+    } catch (e) {
+      // Catch any other errors and log them
+      print('Error cancelling medication reminders: $e');
+    }
+  }
+
+  /// Cancel medication reminders by generating notification IDs directly
+  /// This is more reliable than querying pending notifications
+  static Future<void> _cancelMedicationRemindersByIds(Medication medication) async {
+    if (medication.id == null) return;
+    
+    try {
+      // Generate all possible notification IDs for this medication
+      // Based on the pattern: '${medication.id}_${dayOfWeek}_${reminderTimeMinutes}'.hashCode
+      for (int dayOfWeek in medication.daysOfWeek) {
+        for (int reminderTime in medication.reminderTimes) {
+          final notificationId = ('${medication.id}_${dayOfWeek}_${reminderTime}'.hashCode).abs() % 2147483647;
+          try {
+            await _notifications.cancel(notificationId);
+          } catch (e) {
+            // Ignore errors for individual notification cancellations
+            // The notification might not exist, which is fine
+            print('Could not cancel notification $notificationId: $e');
+          }
+        }
+      }
+    } catch (e) {
+      print('Error cancelling medication reminders by IDs: $e');
     }
   }
 
@@ -285,5 +417,43 @@ class MedicationReminderService {
     for (var medication in medications) {
       await scheduleMedicationReminders(medication);
     }
+  }
+
+  /// Check if notifications are properly configured and permissions are granted
+  static Future<Map<String, dynamic>> checkNotificationStatus() async {
+    await initialize();
+    
+    final status = <String, dynamic>{
+      'initialized': _isInitialized,
+      'notificationPermission': 'unknown',
+      'exactAlarmPermission': 'unknown',
+      'pendingNotifications': 0,
+    };
+    
+    try {
+      // Check notification permission (Android 13+)
+      final notificationStatus = await Permission.notification.status;
+      status['notificationPermission'] = notificationStatus.toString();
+    } catch (e) {
+      status['notificationPermission'] = 'error: $e';
+    }
+    
+    try {
+      // Check exact alarm permission (Android 12+)
+      final exactAlarmStatus = await Permission.scheduleExactAlarm.status;
+      status['exactAlarmPermission'] = exactAlarmStatus.toString();
+    } catch (e) {
+      status['exactAlarmPermission'] = 'error: $e';
+    }
+    
+    try {
+      // Get pending notifications count
+      final pending = await _notifications.pendingNotificationRequests();
+      status['pendingNotifications'] = pending.length;
+    } catch (e) {
+      status['pendingNotifications'] = 'error: $e';
+    }
+    
+    return status;
   }
 }

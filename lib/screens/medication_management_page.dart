@@ -162,8 +162,8 @@ class _MedicationManagementPageState extends State<MedicationManagementPage> {
               try {
                 final medicationName = medication.name;
                 
-                // Cancel reminders first
-                await MedicationReminderService.cancelMedicationReminders(medication.id!);
+                // Cancel reminders first (pass medication object for reliable cancellation)
+                await MedicationReminderService.cancelMedicationReminders(medication.id!, medication: medication);
                 
                 // Delete from database
                 final result = await _dbHelper.deleteMedication(medication.id!);
@@ -228,7 +228,7 @@ class _MedicationManagementPageState extends State<MedicationManagementPage> {
       if (newStatus) {
         await MedicationReminderService.scheduleMedicationReminders(updatedMedication);
       } else {
-        await MedicationReminderService.cancelMedicationReminders(medication.id!);
+        await MedicationReminderService.cancelMedicationReminders(medication.id!, medication: medication);
       }
       
       // Reload medications to reflect the change

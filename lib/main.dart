@@ -19,6 +19,8 @@ void main() async {
   await languageService.initialize();
   
   // Initialize medication reminder service
+  // This will request notification permission on first launch (Android 13+)
+  // and set up notification channels for medication reminders
   await MedicationReminderService.initialize();
   
   // Initialize database (don't reset on every startup)

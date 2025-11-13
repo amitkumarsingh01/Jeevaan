@@ -21,12 +21,20 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     
     <!-- Notification permissions - Required for medication reminders -->
+    <!-- Allows app to receive boot completed event to reschedule notifications after device reboot -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Allows app to vibrate device for notifications -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Allows app to keep device awake to show notifications -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Allows app to show full-screen notifications (for important medication reminders) -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <!-- POST_NOTIFICATIONS permission - Required for Android 13+ (API 33+) to show notifications -->
+    <!-- This permission will be requested at runtime when the app first launches -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     
-    <!-- Exact alarm permission - Required for medication reminders on Android 12+ -->
+    <!-- Exact alarm permission - Required for medication reminders on Android 12+ (API 31+) -->
+    <!-- Allows app to schedule exact alarms for medication reminders -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     
@@ -68,6 +76,19 @@
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="YOUR_GOOGLE_MAPS_API_KEY_HERE" />
+        
+        <!-- Boot completed receiver to reschedule notifications after device reboot -->
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.PACKAGE_REPLACED" />
+                <data android:scheme="package" />
+            </intent-filter>
+        </receiver>
         
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
