@@ -11,11 +11,11 @@ class EmailService {
   static const String _smtpHost = 'smtp.gmail.com';
   static const int _smtpPort = 587;
   static const bool _smtpSecure = false; // Use TLS
-  static const String _smtpUsername = 'aksiedc@gmail.com'; // Update with your email
-  static const String _smtpPassword = 'ldyymceofprngcyp'; // Update with app password
+  static const String _smtpUsername = '*******@gmail.com'; // Update with your email
+  static const String _smtpPassword = '***************'; // Update with app password
   
   // Sender email and name
-  static const String _senderEmail = 'aksiedc@gmail.com'; // Update with your email
+  static const String _senderEmail = '******@gmail.com'; // Update with your email
   static const String _senderName = 'Jeevaan Health Companion';
 
   /// Check if user has email configured
